@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import axios from '@/lib/axios';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Lock, Mail } from 'lucide-react';
+import axios from '@/lib/axios';
+import { Lock } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
-import { validateEmail, validatePassword } from '@/lib/validation';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { validateEmail, validatePassword } from '@/lib/validation';
+import { getErrorMessage } from '@/lib/error-utils';
 
 import toast from 'react-hot-toast';
 
@@ -53,9 +54,9 @@ export default function SignInPage() {
             // Redirect on success
             router.push('/dashboard');
             router.refresh(); // Refresh to update middleware state
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Sign in error:', error);
-            const message = error.response?.data?.message || error.message || 'Something went wrong. Please try again.';
+            const message = getErrorMessage(error);
 
             toast.error(message, { id: loadingToast });
 
@@ -232,7 +233,7 @@ export default function SignInPage() {
                             </div>
                             <div className="mt-8 text-center">
                                 <p className="text-sm text-gray-600 font-medium">
-                                    Don't have an account?{' '}
+                                    Don&apos;t have an account?{' '}
                                     <Link href="/signup" className="font-bold text-purple-600 hover:text-pink-600 transition-colors">
                                         Sign up
                                     </Link>

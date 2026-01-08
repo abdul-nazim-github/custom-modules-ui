@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { KeyRound, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { validateEmail } from '@/lib/validation';
 import { ErrorBoundary } from '@/components/error-boundary';
+import { getErrorMessage } from '@/lib/error-utils';
 
 import toast from 'react-hot-toast';
 
@@ -34,8 +35,8 @@ export default function ForgotPasswordPage() {
             await new Promise(resolve => setTimeout(resolve, 1500));
             toast.success('Reset link sent!', { id: loadingToast });
             setIsSubmitted(true);
-        } catch (err: any) {
-            const message = err.message || 'Something went wrong. Please try again.';
+        } catch (err: unknown) {
+            const message = getErrorMessage(err);
             toast.error(message, { id: loadingToast });
             setError(message);
         } finally {

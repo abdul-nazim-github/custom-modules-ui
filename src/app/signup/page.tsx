@@ -1,13 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { ErrorBoundary } from '@/components/error-boundary';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { UserPlus, Mail, Lock, User } from 'lucide-react';
+import { getErrorMessage } from '@/lib/error-utils';
 import { validateEmail, validatePassword } from '@/lib/validation';
-import { ErrorBoundary } from '@/components/error-boundary';
+import { UserPlus } from 'lucide-react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 import toast from 'react-hot-toast';
 
@@ -54,8 +55,8 @@ export default function SignUpPage() {
             await new Promise(resolve => setTimeout(resolve, 1500));
             toast.success('Account created! Please sign in.', { id: loadingToast });
             router.push('/signin');
-        } catch (error: any) {
-            const message = error.message || 'Failed to create account. Please try again.';
+        } catch (error: unknown) {
+            const message = getErrorMessage(error);
             toast.error(message, { id: loadingToast });
             setErrors({ form: message });
         } finally {

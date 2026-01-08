@@ -1,4 +1,3 @@
-import { cookies } from 'next/headers';
 
 export default async function DashboardPage() {
     // We can access cookies here if needed, but middleware already protects this route.
