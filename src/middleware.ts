@@ -2,17 +2,16 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
-  const token = request.cookies.get(process.env.COOKIE_NAME || 'auth_token')?.value;
+  const token = request.cookies.get('accessToken')?.value;
   const { pathname } = request.nextUrl;
 
   // Public routes that don't require auth
   const publicRoutes = ['/signin', '/signup', '/forgot-password'];
-
-  // Check if the current path is a public route
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
+  const isRootPath = pathname === '/';
 
-  // If user is authenticated and tries to access signin page, redirect to dashboard
-  if (token && isPublicRoute) {
+  // If user is authenticated and tries to access signin/signup or root, redirect to dashboard
+  if (token && (isPublicRoute || isRootPath)) {
       return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 

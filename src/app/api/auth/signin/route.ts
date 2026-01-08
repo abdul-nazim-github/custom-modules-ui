@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import axios from 'axios';
+import { getErrorMessage } from '@/lib/error-utils';
 
 export async function POST(request: Request) {
   try {
@@ -15,63 +16,62 @@ export async function POST(request: Request) {
       );
     }
 
+    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3018/api';
+
     // Call Backend API
-    // In a real app, this would be your actual backend URL
-    // For demo purposes, we'll mock a successful response if credentials match a pattern
-    // or try to call the URL from env.
+    const response = await axios.post(`${backendUrl}/auth/login`, { email, password });
 
-    let token = '';
-    let user = null;
+    const { message, data, success } = response.data;
 
-    const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-    // MOCK LOGIC FOR DEMO (Remove in production if real backend is ready)
-    if (email === 'demo@example.com' && password === 'password') {
-       token = 'mock_jwt_token_xyz123';
-       user = { id: 1, email, name: 'Demo User' };
-    } else {
-        // Attempt actual backend call
-        try {
-            const response = await axios.post(`${backendUrl}/auth/login`, { email, password });
-            token = response.data.access_token;
-            user = response.data.user;
-        } catch (error) {
-             // If backend call fails and it's not the mock user
-             if (email !== 'demo@example.com') {
-                 return NextResponse.json(
-                    { message: 'Invalid credentials' },
-                    { status: 401 }
-                 );
-             }
-        }
+    if (!success || !data) {
+      return NextResponse.json(
+        { message: message || 'Authentication failed' },
+        { status: 401 }
+      );
     }
 
-    if (!token) {
-         return NextResponse.json(
-            { message: 'Authentication failed' },
-            { status: 401 }
-         );
-    }
+    const { accessToken, refreshToken } = data;
 
-    // Set httpOnly cookie
+    // Set cookies
     const cookieStore = await cookies();
+
+    // Access Token Cookie
     cookieStore.set({
-      name: process.env.COOKIE_NAME || 'auth_token',
-      value: token,
+      name: 'accessToken',
+      value: accessToken,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge: 60 * 60 * 24 * 7, // 1 week
+      maxAge: 60 * 60 * 24, // 1 day
       path: '/',
     });
 
-    return NextResponse.json({ user, message: 'Login successful' });
+    // Refresh Token Cookie
+    cookieStore.set({
+      name: 'refreshToken',
+      value: refreshToken,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    return NextResponse.json({ message, success, data: { accessToken, refreshToken } });
 
   } catch (error: unknown) {
     console.error('Login error:', error);
+    const message = getErrorMessage(error);
+
+    // Extract status code if available from axios error
+    let status = 500;
+    if (axios.isAxiosError(error) && error.response) {
+      status = error.response.status;
+    }
+
     return NextResponse.json(
-      { message: 'Internal server error' },
-      { status: 500 }
+      { message },
+      { status }
     );
   }
 }

@@ -1,8 +1,9 @@
+import { LogoutButton } from '@/components/logout-button';
 
 export default async function DashboardPage() {
     // We can access cookies here if needed, but middleware already protects this route.
     // const cookieStore = await cookies();
-    // const token = cookieStore.get('auth_token');
+    // const token = cookieStore.get('accessToken');
 
     return (
         <div className="min-h-screen bg-gray-100">
@@ -14,8 +15,9 @@ export default async function DashboardPage() {
                                 <span className="text-xl font-bold text-gray-800">Dashboard</span>
                             </div>
                         </div>
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-4">
                             <span className="text-gray-500 text-sm">Welcome, User</span>
+                            <LogoutButton />
                         </div>
                     </div>
                 </div>
