@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getErrorMessage } from '@/lib/error-utils';
 import { validateEmail, validatePassword } from '@/lib/validation';
+import axios from '@/lib/axios';
 import { UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -51,8 +52,13 @@ export default function SignUpPage() {
         const loadingToast = toast.loading('Creating account...');
 
         try {
-            // Mock signup API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Call our Next.js API route
+            await axios.post('/api/auth/register', {
+                name: formData.name,
+                email: formData.email,
+                password: formData.password
+            });
+
             toast.success('Account created! Please sign in.', { id: loadingToast });
             router.push('/signin');
         } catch (error: unknown) {
