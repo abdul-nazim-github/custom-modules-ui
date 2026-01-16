@@ -3,17 +3,17 @@ import { cookies } from 'next/headers';
 import axios from 'axios';
 import { getErrorMessage } from '@/lib/error-utils';
 
-export async function PUT(
+export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('accessToken')?.value;
 
     if (!accessToken) {
+      console.error(`API Route: DELETE /api/auth/users/${id} - No access token found in cookies`);
       return NextResponse.json(
         { message: 'Unauthorized: No access token', success: false },
         { status: 401 }
@@ -21,32 +21,30 @@ export async function PUT(
     }
 
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
-    const fullBackendUrl = `${backendUrl}/auth/users/${id}/permissions`;
+    const fullBackendUrl = `${backendUrl}/auth/users/${id}`;
 
     try {
-      const response = await axios.put(
+      const response = await axios.delete(
         fullBackendUrl,
-        body,
         {
           headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
+            'Authorization': `Bearer ${accessToken}`
           }
         }
       );
       return NextResponse.json(response.data);
     } catch (backendError: unknown) {
       if (axios.isAxiosError(backendError)) {
-        console.error('Backend permission update error status:', backendError.response?.status);
-        console.error('Backend permission update error message:', backendError.response?.data?.message || backendError.message);
+        console.error('Backend user delete error status:', backendError.response?.status);
+        console.error('Backend user delete error message:', backendError.response?.data?.message || backendError.message);
       } else {
-        console.error('Backend permission update error:', backendError);
+        console.error('Backend user delete error:', backendError);
       }
       throw backendError;
     }
 
   } catch (error: unknown) {
-    console.error('Permission update error:', error);
+    console.error('User delete error:', error);
     const message = getErrorMessage(error);
     let status = 500;
     if (axios.isAxiosError(error) && error.response) {

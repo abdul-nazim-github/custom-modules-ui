@@ -9,15 +9,9 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    console.log(`API Route: /api/auth/users/${id}/role - params unwrapped`);
     const body = await request.json();
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('accessToken')?.value;
-
-    console.log(`API Route: /api/auth/users/${id}/role - accessToken present:`, !!accessToken);
-    if (accessToken) {
-      console.log(`API Route: /api/auth/users/${id}/role - Token starts with: ${accessToken.substring(0, 10)}...`);
-    }
 
     if (!accessToken) {
       console.error(`API Route: /api/auth/users/${id}/role - No access token found in cookies`);
@@ -30,8 +24,6 @@ export async function PUT(
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
     const fullBackendUrl = `${backendUrl}/auth/users/${id}/role`;
 
-    console.log(`Attempting backend PUT to: ${fullBackendUrl}`);
-
     try {
       const response = await axios.put(
         fullBackendUrl,
@@ -43,7 +35,6 @@ export async function PUT(
           }
         }
       );
-      console.log('Backend response status:', response.status);
       return NextResponse.json(response.data);
     } catch (backendError: unknown) {
       if (axios.isAxiosError(backendError)) {

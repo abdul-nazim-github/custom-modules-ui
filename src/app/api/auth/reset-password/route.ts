@@ -5,41 +5,41 @@ import { getErrorMessage } from '@/lib/error-utils';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { name, email, password } = body;
+    const { email, password } = body;
 
     // Validate input
-    if (!name || !email || !password) {
+    if (!email || !password) {
       return NextResponse.json(
-        { message: 'Name, email, and password are required' },
+        { message: 'Email and password are required', success: false },
         { status: 400 }
       );
     }
 
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
     // Call Backend API
-    const response = await axios.post(`${backendUrl}/auth/register`, { name, email, password });
-    const { message, success, data } = response.data;
+    const response = await axios.post(`${backendUrl}/auth/reset-password`, { email, password });
+    const { message, success } = response.data;
 
-    if (!success) {
-      return NextResponse.json(
-        { message: message || 'Registration failed', success: false },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({ message, success, data });
+    return NextResponse.json({
+      message: message || 'Password reset successful',
+      success: success ?? true,
+    });
 
   } catch (error: unknown) {
-    console.error('Registration error:', error);
+    console.error('Reset password error:', error);
     const message = getErrorMessage(error);
 
+    // Extract status code if available from axios error
     let status = 500;
     if (axios.isAxiosError(error) && error.response) {
       status = error.response.status;
     }
 
     return NextResponse.json(
-      { message, success: false },
+      {
+        message: message || 'Internal Server Error',
+        success: false
+      },
       { status }
     );
   }
