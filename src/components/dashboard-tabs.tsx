@@ -67,6 +67,16 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     const [selectedRole, setSelectedRole] = useState<Role>(Role.USER);
     const [isUpdating, setIsUpdating] = useState(false);
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<{ id: string, name: string } | null>(null);
+
+    // Comparison logic for disabling buttons
+    const currentUser = users.find(u => (u.id || u._id) === targetUserId);
+    const hasPermissionChanges = currentUser ? (
+        selectedPermissions.length !== currentUser.permissions.length ||
+        !selectedPermissions.every(p => currentUser.permissions.includes(p))
+    ) : false;
+    const hasRoleChanges = currentUser ? selectedRole !== currentUser.role : false;
 
     useEffect(() => {
         if (activeTab === 'users') {
@@ -80,14 +90,23 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             const response = await axios.get('/api/auth/users');
             if (response.data.success) {
                 const fetchedUsers = response.data.data;
-                console.log('DashboardTabs: Fetched users:', fetchedUsers);
                 setUsers(fetchedUsers);
-                if (fetchedUsers.length > 0 && !targetUserId) {
-                    const firstUser = fetchedUsers[0];
-                    const initialId = firstUser.id || firstUser._id;
-                    console.log('DashboardTabs: Setting initial targetUserId:', initialId);
-                    setTargetUserId(initialId);
-                    setSelectedRole(firstUser.role);
+                if (fetchedUsers.length > 0) {
+                    // Update current target user data if already selected
+                    if (targetUserId) {
+                        const currentUser = fetchedUsers.find((u: UserData) => (u.id || u._id) === targetUserId);
+                        if (currentUser) {
+                            setSelectedRole(currentUser.role);
+                            setSelectedPermissions(currentUser.permissions as Permission[]);
+                        }
+                    } else {
+                        // Initial load: select first user
+                        const firstUser = fetchedUsers[0];
+                        const initialId = firstUser.id || firstUser._id;
+                        setTargetUserId(initialId);
+                        setSelectedRole(firstUser.role);
+                        setSelectedPermissions(firstUser.permissions as Permission[]);
+                    }
                 }
             }
         } catch (error) {
@@ -99,7 +118,6 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     };
 
     const handleUpdatePermissions = async () => {
-        console.log('DashboardTabs: handleUpdatePermissions called with targetUserId:', targetUserId);
         if (!targetUserId || targetUserId === 'undefined') {
             toast.error('Invalid User ID selected');
             return;
@@ -112,12 +130,18 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         const loadingToast = toast.loading('Updating permissions...');
         try {
             await axios.put(`/api/auth/users/${targetUserId}/permissions`, {
-                action: 'add',
                 permissions: selectedPermissions
             });
             toast.success('Permissions updated successfully!', { id: loadingToast });
-            setSelectedPermissions([]);
-            fetchUsers(); // Refresh list
+
+            // Immediate local state update for "immediate effect"
+            setUsers(prevUsers => prevUsers.map(user =>
+                (user.id || user._id) === targetUserId
+                    ? { ...user, permissions: [...selectedPermissions] }
+                    : user
+            ));
+
+            fetchUsers(); // Still refresh list to keep in sync with server
         } catch (error) {
             console.error('Update error:', error);
             toast.error('Failed to update permissions', { id: loadingToast });
@@ -127,7 +151,6 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     };
 
     const handleUpdateRole = async () => {
-        console.log('DashboardTabs: handleUpdateRole called with targetUserId:', targetUserId);
         if (!targetUserId || targetUserId === 'undefined') {
             toast.error('Invalid User ID selected');
             return;
@@ -139,12 +162,44 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                 role: selectedRole
             });
             toast.success('Role updated successfully!', { id: loadingToast });
-            fetchUsers(); // Refresh list
+
+            // Immediate local state update for "immediate effect"
+            setUsers(prevUsers => prevUsers.map(user =>
+                (user.id || user._id) === targetUserId
+                    ? { ...user, role: selectedRole }
+                    : user
+            ));
+
+            fetchUsers(); // Still refresh list to keep in sync with server
         } catch (error) {
             console.error('Role update error:', error);
             toast.error('Failed to update role', { id: loadingToast });
         } finally {
             setIsUpdating(false);
+        }
+    };
+
+    const handleDeleteUser = (userId: string, userName: string) => {
+        setUserToDelete({ id: userId, name: userName });
+        setShowDeleteModal(true);
+    };
+
+    const confirmDeleteUser = async () => {
+        if (!userToDelete) return;
+
+        const loadingToast = toast.loading('Deleting user...');
+        try {
+            await axios.delete(`/api/auth/users/${userToDelete.id}`);
+            toast.success('User deleted successfully!', { id: loadingToast });
+            if (targetUserId === userToDelete.id) {
+                setTargetUserId('');
+            }
+            setShowDeleteModal(false);
+            setUserToDelete(null);
+            fetchUsers(); // Refresh list
+        } catch (error) {
+            console.error('Delete user error:', error);
+            toast.error('Failed to delete user', { id: loadingToast });
         }
     };
 
@@ -159,6 +214,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         const user = users.find(u => (u.id || u._id) === userId);
         if (user) {
             setSelectedRole(user.role);
+            setSelectedPermissions(user.permissions as Permission[]);
         }
     };
 
@@ -362,9 +418,9 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                 </select>
                                                 <button
                                                     onClick={handleUpdateRole}
-                                                    disabled={isUpdating || !targetUserId}
-                                                    className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all shadow-lg shadow-indigo-100"
-                                                    title="Update Role"
+                                                    disabled={isUpdating || !targetUserId || !hasRoleChanges}
+                                                    className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-100"
+                                                    title={hasRoleChanges ? "Update Role" : "No changes to role"}
                                                 >
                                                     <UserCheck size={20} />
                                                 </button>
@@ -373,7 +429,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
 
                                         {/* Permissions Update */}
                                         <div>
-                                            <label className="block text-sm font-bold text-gray-800 mb-2">Add Permissions</label>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">Manage Permissions</label>
                                             <div className="grid grid-cols-1 gap-2 mb-4">
                                                 {Object.values(Permission).map((perm) => (
                                                     <button
@@ -390,8 +446,9 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                             </div>
                                             <button
                                                 onClick={handleUpdatePermissions}
-                                                disabled={isUpdating || selectedPermissions.length === 0 || !targetUserId}
-                                                className="w-full py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-all font-bold shadow-lg shadow-indigo-200 flex items-center justify-center space-x-2"
+                                                disabled={isUpdating || !targetUserId || !hasPermissionChanges}
+                                                className="w-full py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold shadow-lg shadow-indigo-200 flex items-center justify-center space-x-2"
+                                                title={hasPermissionChanges ? "Update Permissions" : "No changes to permissions"}
                                             >
                                                 {isUpdating ? (
                                                     <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -436,7 +493,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                 </tr>
                                             )}
                                             {!isLoadingUsers && users.map((user) => (
-                                                <tr key={user.id} className={targetUserId === user.id ? 'bg-indigo-50/50' : ''}>
+                                                <tr key={user.id || user._id} className={targetUserId === (user.id || user._id) ? 'bg-indigo-50/50' : ''}>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <div className="flex items-center">
                                                             <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
@@ -457,15 +514,27 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                     </td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-wrap gap-1">
-                                                            {user.permissions.slice(0, 2).map(p => (
+                                                            {user.permissions.slice(0, 4).map(p => (
                                                                 <span key={p} className="px-2 py-0.5 bg-gray-200 text-gray-800 text-[10px] rounded-md font-bold">
                                                                     {PERMISSION_LABELS[p as Permission] || p.split('~').pop()}
                                                                 </span>
                                                             ))}
-                                                            {user.permissions.length > 2 && (
-                                                                <span className="px-2 py-0.5 bg-gray-200 text-gray-800 text-[10px] rounded-md font-bold">
-                                                                    +{user.permissions.length - 2}
-                                                                </span>
+                                                            {user.permissions.length > 4 && (
+                                                                <div className="relative group">
+                                                                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded-md font-bold cursor-help">
+                                                                        +{user.permissions.length - 4} more
+                                                                    </span>
+                                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-[10px] rounded-lg shadow-xl z-50">
+                                                                        <div className="flex flex-wrap gap-1">
+                                                                            {user.permissions.slice(4).map(p => (
+                                                                                <span key={p} className="px-1.5 py-0.5 bg-gray-700 rounded">
+                                                                                    {PERMISSION_LABELS[p as Permission] || p.split('~').pop()}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
+                                                                    </div>
+                                                                </div>
                                                             )}
                                                         </div>
                                                     </td>
@@ -474,10 +543,16 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                             <button
                                                                 onClick={() => handleUserSelect(user.id || user._id || '')}
                                                                 className="p-2 text-gray-500 hover:text-indigo-600 transition-colors"
+                                                                title="Edit User"
                                                             >
                                                                 <Edit2 size={16} />
                                                             </button>
-                                                            <button className="p-2 text-gray-500 hover:text-red-600 transition-colors">
+                                                            <button
+                                                                onClick={() => handleDeleteUser(user.id || user._id || '', user.name)}
+                                                                disabled={user.email === userEmail}
+                                                                className="p-2 text-gray-500 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                                                title={user.email === userEmail ? "You cannot delete your own account" : "Delete User"}
+                                                            >
                                                                 <Trash2 size={16} />
                                                             </button>
                                                         </div>
@@ -492,6 +567,41 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                     </div>
                 )}
             </div>
+
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6">
+                            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-4">
+                                <Trash2 size={24} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete User</h3>
+                            <p className="text-gray-500">
+                                Are you sure you want to delete <span className="font-bold text-gray-900">{userToDelete?.name}</span>?
+                                This action cannot be undone and will permanently remove their account.
+                            </p>
+                        </div>
+                        <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
+                            <button
+                                onClick={() => {
+                                    setShowDeleteModal(false);
+                                    setUserToDelete(null);
+                                }}
+                                className="px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-200 rounded-xl transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDeleteUser}
+                                className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-lg shadow-red-200"
+                            >
+                                Delete User
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

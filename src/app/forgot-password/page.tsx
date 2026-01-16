@@ -2,43 +2,66 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { KeyRound, ArrowLeft, CheckCircle2 } from 'lucide-react';
-import { validateEmail } from '@/lib/validation';
+import { KeyRound, ArrowLeft } from 'lucide-react';
+import { validateEmail, validatePassword } from '@/lib/validation';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { getErrorMessage } from '@/lib/error-utils';
-
+import axios from '@/lib/axios';
 import toast from 'react-hot-toast';
 
 export default function ForgotPasswordPage() {
-    const [email, setEmail] = useState('');
-    const [error, setError] = useState<string | null>(null);
+    const router = useRouter();
+    const [formData, setFormData] = useState({
+        email: '',
+        newPassword: '',
+        confirmPassword: '',
+    });
+    const [errors, setErrors] = useState<{ email?: string; newPassword?: string; confirmPassword?: string }>({});
     const [isLoading, setIsLoading] = useState(false);
-    const [isSubmitted, setIsSubmitted] = useState(false);
+
+    const validate = () => {
+        const emailError = validateEmail(formData.email);
+        const passwordError = validatePassword(formData.newPassword);
+        let confirmError = null;
+
+        if (formData.newPassword !== formData.confirmPassword) {
+            confirmError = 'Passwords do not match';
+        }
+
+        const newErrors = {
+            email: emailError || undefined,
+            newPassword: passwordError || undefined,
+            confirmPassword: confirmError || undefined,
+        };
+
+        setErrors(newErrors);
+        return !emailError && !passwordError && !confirmError;
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError(null);
+        setErrors({});
 
-        const emailError = validateEmail(email);
-        if (emailError) {
-            setError(emailError);
-            return;
-        }
+        if (!validate()) return;
 
         setIsLoading(true);
-        const loadingToast = toast.loading('Sending reset link...');
+        const loadingToast = toast.loading('Resetting password...');
 
         try {
-            // Mock API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
-            toast.success('Reset link sent!', { id: loadingToast });
-            setIsSubmitted(true);
+            await axios.post('/api/auth/reset-password', {
+                email: formData.email,
+                password: formData.newPassword,
+            });
+
+            toast.success('Password reset successful!', { id: loadingToast });
+            router.push('/signin');
         } catch (err: unknown) {
             const message = getErrorMessage(err);
             toast.error(message, { id: loadingToast });
-            setError(message);
+            setErrors({ email: message });
         } finally {
             setIsLoading(false);
         }
@@ -57,57 +80,69 @@ export default function ForgotPasswordPage() {
                     <div className="space-y-8 bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 transition-all duration-300 hover:shadow-purple-500/20">
                         <div className="text-center">
                             <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl rotate-12 flex items-center justify-center shadow-lg transform transition-transform hover:rotate-0 hover:scale-110 group">
-                                {isSubmitted ? (
-                                    <CheckCircle2 className="h-10 w-10 text-white animate-in zoom-in duration-300" />
-                                ) : (
-                                    <KeyRound className="h-10 w-10 text-white group-hover:animate-spin-slow" />
-                                )}
+                                <KeyRound className="h-10 w-10 text-white group-hover:animate-spin-slow" />
                             </div>
                             <h2 className="mt-6 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 tracking-tight">
-                                {isSubmitted ? 'Check Email' : 'Forgot Password?'}
+                                Reset Password
                             </h2>
                             <p className="mt-2 text-sm text-gray-600 font-medium">
-                                {isSubmitted
-                                    ? `We've sent a reset link to ${email}`
-                                    : "No worries, we'll send you reset instructions."}
+                                Enter your email and new password to reset your account.
                             </p>
                         </div>
 
-                        {!isSubmitted ? (
-                            <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                            <div className="space-y-4">
                                 <div className="group">
                                     <Input
                                         id="email"
                                         label="Email address"
                                         type="email"
                                         placeholder="you@example.com"
-                                        value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        error={error || undefined}
+                                        value={formData.email}
+                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        error={errors.email}
                                         disabled={isLoading}
                                         className="group-hover:bg-white"
                                     />
                                 </div>
 
-                                <Button
-                                    type="submit"
-                                    className="w-full h-12 text-lg bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 hover:from-purple-700 hover:via-pink-700 hover:to-orange-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 active:scale-95"
-                                    isLoading={isLoading}
-                                >
-                                    Reset Password
-                                </Button>
-                            </form>
-                        ) : (
-                            <div className="mt-8 text-center">
-                                <Button
-                                    onClick={() => setIsSubmitted(false)}
-                                    variant="outline"
-                                    className="w-full border-2 border-purple-200 text-purple-600 font-bold hover:bg-purple-50 rounded-xl h-12"
-                                >
-                                    Try another email
-                                </Button>
+                                <div className="group">
+                                    <Input
+                                        id="newPassword"
+                                        label="New Password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={formData.newPassword}
+                                        onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                                        error={errors.newPassword}
+                                        disabled={isLoading}
+                                        className="group-hover:bg-white"
+                                    />
+                                </div>
+
+                                <div className="group">
+                                    <Input
+                                        id="confirmPassword"
+                                        label="Confirm Password"
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={formData.confirmPassword}
+                                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                        error={errors.confirmPassword}
+                                        disabled={isLoading}
+                                        className="group-hover:bg-white"
+                                    />
+                                </div>
                             </div>
-                        )}
+
+                            <Button
+                                type="submit"
+                                className="w-full h-12 text-lg bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 hover:from-purple-700 hover:via-pink-700 hover:to-orange-600 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 active:scale-95"
+                                isLoading={isLoading}
+                            >
+                                Reset Password
+                            </Button>
+                        </form>
 
                         <div className="text-center">
                             <Link href="/signin" className="inline-flex items-center text-sm font-bold text-gray-500 hover:text-purple-600 transition-colors group">

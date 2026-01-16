@@ -17,13 +17,8 @@ export async function POST(request: Request) {
     }
 
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
-
-    console.log(`Attempting login to backend: ${backendUrl}/auth/login`);
-
     // Call Backend API
     const response = await axios.post(`${backendUrl}/auth/login`, { email, password });
-
-    console.log('Backend response status:', response.status);
     const { message, data, success } = response.data;
 
     if (!success || !data) {

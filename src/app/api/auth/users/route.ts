@@ -16,9 +16,6 @@ export async function GET() {
   try {
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('accessToken')?.value;
-
-    console.log('API Route: /api/auth/users - accessToken present:', !!accessToken);
-
     if (!accessToken) {
       console.error('API Route: /api/auth/users - No access token found in cookies');
       return NextResponse.json(
@@ -29,20 +26,12 @@ export async function GET() {
 
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
 
-    console.log(`Fetching users from backend: ${backendUrl}/auth/users`);
-
     try {
       const response = await axios.get(`${backendUrl}/auth/users`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
       });
-      console.log('Backend response status:', response.status);
-      console.log('Backend response success:', response.data.success);
-      if (response.data.data && response.data.data.length > 0) {
-        console.log('First user from backend (raw):', JSON.stringify(response.data.data[0]));
-      }
-
       // Map _id to id if necessary
       if (response.data.success && Array.isArray(response.data.data)) {
         response.data.data = response.data.data.map((user: BackendUser) => {
@@ -52,7 +41,6 @@ export async function GET() {
           };
           return mappedUser;
         });
-        console.log('First user after mapping:', JSON.stringify(response.data.data[0]));
       }
 
       return NextResponse.json(response.data);
