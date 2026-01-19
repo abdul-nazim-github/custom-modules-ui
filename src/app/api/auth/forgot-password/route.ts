@@ -5,31 +5,30 @@ import { getErrorMessage } from '@/lib/error-utils';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { password, token } = body;
+    const { email } = body;
 
-    // Validate input
-    if (!password || !token) {
+    if (!email) {
       return NextResponse.json(
-        { message: 'Password and token are required', success: false },
+        { message: 'Email is required', success: false },
         { status: 400 }
       );
     }
 
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
+
     // Call Backend API
-    const response = await axios.post(`${backendUrl}/auth/reset-password`, { password, token });
+    const response = await axios.post(`${backendUrl}/auth/forgot-password`, { email });
     const { message, success } = response.data;
 
     return NextResponse.json({
-      message: message || 'Password reset successful',
+      message: message || 'Reset email sent successfully',
       success: success ?? true,
     });
 
   } catch (error: unknown) {
-    console.error('Reset password error:', error);
+    console.error('Forgot password error:', error);
     const message = getErrorMessage(error);
 
-    // Extract status code if available from axios error
     let status = 500;
     if (axios.isAxiosError(error) && error.response) {
       status = error.response.status;
