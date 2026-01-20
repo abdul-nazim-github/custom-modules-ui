@@ -14,7 +14,7 @@ import { getErrorMessage } from '@/lib/error-utils';
 import axios from '@/lib/axios';
 import toast from 'react-hot-toast';
 
-function ResetPasswordForm() {
+function ResetPasswordForm({ onTokenVerified }: { onTokenVerified: (isValid: boolean) => void }) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [formData, setFormData] = useState({
@@ -23,13 +23,38 @@ function ResetPasswordForm() {
     });
     const [errors, setErrors] = useState<{ newPassword?: string; confirmPassword?: string }>({});
     const [isLoading, setIsLoading] = useState(false);
+    const [isVerifying, setIsVerifying] = useState(true);
+    const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
     const [token, setToken] = useState<string | null>(null);
-    const [email, setEmail] = useState<string | null>(null);
 
     useEffect(() => {
-        setToken(searchParams.get('token'));
-        setEmail(searchParams.get('email'));
-    }, [searchParams]);
+        const t = searchParams.get('token');
+        setToken(t);
+
+        if (t) {
+            verifyToken(t);
+        } else {
+            setIsVerifying(false);
+            setIsValidToken(false);
+            onTokenVerified(false);
+        }
+    }, [searchParams, onTokenVerified]);
+
+    const verifyToken = async (tokenValue: string) => {
+        setIsVerifying(true);
+        try {
+            const response = await axios.get(`/api/auth/verify-reset-token?token=${tokenValue}`);
+            const isValid = response.data.isValid;
+            setIsValidToken(isValid);
+            onTokenVerified(isValid);
+        } catch (err) {
+            console.error('Token verification failed:', err);
+            setIsValidToken(false);
+            onTokenVerified(false);
+        } finally {
+            setIsVerifying(false);
+        }
+    };
 
     const validate = () => {
         const trimmedPassword = formData.newPassword.trim();
@@ -83,13 +108,35 @@ function ResetPasswordForm() {
         }
     };
 
-    if (!token) {
+    if (isVerifying) {
         return (
-            <div className="text-center space-y-4">
-                <p className="text-red-500 font-bold">Invalid or expired reset link.</p>
-                <Link href="/forgot-password" title="Go to forgot password" className="text-purple-600 hover:underline">
-                    Request a new link
-                </Link>
+            <div className="flex flex-col items-center justify-center space-y-4 py-8">
+                <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-gray-600 font-medium">Verifying reset link...</p>
+            </div>
+        );
+    }
+
+    if (!isValidToken) {
+        return (
+            <div className="text-center space-y-6 py-4">
+                <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                    <KeyRound className="h-8 w-8 text-red-600" />
+                </div>
+                <div className="space-y-2">
+                    <h3 className="text-xl font-bold text-gray-900">Link Expired</h3>
+                    <p className="text-gray-600">
+                        This password reset link is invalid or has expired. Please request a new one.
+                    </p>
+                </div>
+                <div className="pt-4">
+                    <Link
+                        href="/forgot-password"
+                        className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-purple-600 hover:bg-purple-700 transition-colors shadow-md hover:shadow-lg"
+                    >
+                        Request New Link
+                    </Link>
+                </div>
             </div>
         );
     }
@@ -163,6 +210,8 @@ function ResetPasswordForm() {
 }
 
 export default function ResetPasswordPage() {
+    const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-[conic-gradient(at_top_right,_var(--tw-gradient-stops))] from-indigo-400 via-purple-500 to-pink-500 p-4 sm:px-6 lg:px-8 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
@@ -174,20 +223,22 @@ export default function ResetPasswordPage() {
             <div className="max-w-md w-full z-10">
                 <ErrorBoundary>
                     <div className="space-y-8 bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 transition-all duration-300 hover:shadow-purple-500/20">
-                        <div className="text-center">
-                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg transform transition-transform group">
-                                <KeyRound className="h-10 w-10 text-white" />
+                        {isValidToken !== false && (
+                            <div className="text-center">
+                                <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg transform transition-transform group">
+                                    <KeyRound className="h-10 w-10 text-white" />
+                                </div>
+                                <h2 className="mt-6 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 tracking-tight">
+                                    New Password
+                                </h2>
+                                <p className="mt-2 text-sm text-gray-600 font-medium">
+                                    Create a new password for your account.
+                                </p>
                             </div>
-                            <h2 className="mt-6 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 tracking-tight">
-                                New Password
-                            </h2>
-                            <p className="mt-2 text-sm text-gray-600 font-medium">
-                                Create a new password for your account.
-                            </p>
-                        </div>
+                        )}
 
                         <Suspense fallback={<div className="text-center">Loading...</div>}>
-                            <ResetPasswordForm />
+                            <ResetPasswordForm onTokenVerified={setIsValidToken} />
                         </Suspense>
 
                         <div className="text-center">
