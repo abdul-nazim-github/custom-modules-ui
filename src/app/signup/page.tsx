@@ -4,7 +4,7 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getErrorMessage } from '@/lib/error-utils';
-import { validateEmail, validatePassword } from '@/lib/validation';
+import { validateEmail, validatePassword, validateName } from '@/lib/validation';
 import axios from '@/lib/axios';
 import { UserPlus } from 'lucide-react';
 import Link from 'next/link';
@@ -25,16 +25,31 @@ export default function SignUpPage() {
     const [isLoading, setIsLoading] = useState(false);
 
     const validate = () => {
-        const newErrors: typeof errors = {};
-        if (!formData.name) newErrors.name = 'Name is required';
+        const trimmedData = {
+            name: formData.name.trim(),
+            email: formData.email.trim(),
+            password: formData.password.trim(),
+            confirmPassword: formData.confirmPassword.trim(),
+        };
 
-        const emailError = validateEmail(formData.email);
+        const newErrors: typeof errors = {};
+
+        const nameError = validateName(trimmedData.name);
+        if (nameError) newErrors.name = nameError;
+
+        const emailError = validateEmail(trimmedData.email);
         if (emailError) newErrors.email = emailError;
 
-        const passwordError = validatePassword(formData.password);
-        if (passwordError) newErrors.password = passwordError;
+        if (!trimmedData.password) {
+            newErrors.password = 'Password is required';
+        } else {
+            const passwordError = validatePassword(trimmedData.password);
+            if (passwordError) newErrors.password = passwordError;
+        }
 
-        if (formData.password !== formData.confirmPassword) {
+        if (!trimmedData.confirmPassword) {
+            newErrors.confirmPassword = 'Please confirm your password';
+        } else if (trimmedData.password !== trimmedData.confirmPassword) {
             newErrors.confirmPassword = 'Passwords do not match';
         }
 
@@ -54,9 +69,9 @@ export default function SignUpPage() {
         try {
             // Call our Next.js API route
             await axios.post('/api/auth/register', {
-                name: formData.name,
-                email: formData.email,
-                password: formData.password
+                name: formData.name.trim(),
+                email: formData.email.trim(),
+                password: formData.password.trim()
             });
 
             toast.success('Account created! Please sign in.', { id: loadingToast });
@@ -88,11 +103,11 @@ export default function SignUpPage() {
                                 Create Account
                             </h2>
                             <p className="mt-2 text-sm text-gray-600 font-medium">
-                                Join our colorful community today
+                                Join our community today
                             </p>
                         </div>
 
-                        <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+                        <form className="mt-8 space-y-4" onSubmit={handleSubmit} noValidate>
                             <div className="group">
                                 <Input
                                     id="name"

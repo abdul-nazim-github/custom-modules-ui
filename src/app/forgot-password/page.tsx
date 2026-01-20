@@ -32,9 +32,10 @@ export default function ForgotPasswordPage() {
         const loadingToast = toast.loading('Sending reset link...');
 
         try {
-            await axios.post('/api/auth/forgot-password', { email });
+            await axios.post('/api/auth/forgot-password', { email: email.trim() });
 
-            toast.success('Reset link sent to your email!', { id: loadingToast });
+            toast.success('Reset link sent! Check your email.', { id: loadingToast });
+            setEmail('');
             setIsSubmitted(true);
         } catch (err: unknown) {
             const message = getErrorMessage(err);
@@ -99,7 +100,7 @@ export default function ForgotPasswordPage() {
                             </p>
                         </div>
 
-                        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                        <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
                             <div className="space-y-4">
                                 <div className="group">
                                     <Input
@@ -129,7 +130,7 @@ export default function ForgotPasswordPage() {
                         </form>
 
                         <div className="text-center">
-                            <Link href="/signin" className="inline-flex items-center text-sm font-bold text-gray-500 hover:text-purple-600 transition-colors group">
+                            <Link href="/signin" className="inline-flex items-center text-sm font-bold text-purple-600 hover:text-purple-700 transition-colors group">
                                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
                                 Back to Sign in
                             </Link>

@@ -24,8 +24,11 @@ export default function SignInPage() {
     const [isLoading, setIsLoading] = useState(false);
 
     const validate = () => {
-        const emailError = validateEmail(formData.email);
-        const passwordError = validatePassword(formData.password);
+        const trimmedEmail = formData.email.trim();
+        const trimmedPassword = formData.password.trim();
+
+        const emailError = validateEmail(trimmedEmail);
+        const passwordError = validatePassword(trimmedPassword);
 
         const newErrors = {
             email: emailError || undefined,
@@ -47,7 +50,10 @@ export default function SignInPage() {
 
         try {
             // Call our Next.js API route
-            await axios.post('/api/auth/login', formData);
+            await axios.post('/api/auth/login', {
+                email: formData.email.trim(),
+                password: formData.password.trim()
+            });
 
             toast.success('Welcome back!', { id: loadingToast });
 
@@ -84,11 +90,11 @@ export default function SignInPage() {
                                 Welcome Back
                             </h2>
                             <p className="mt-2 text-sm text-gray-600 font-medium">
-                                Sign in to access your colorful dashboard
+                                Sign in to access your dashboard
                             </p>
                         </div>
 
-                        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                        <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
                             <div className="space-y-4">
                                 <div className="group">
                                     <Input
@@ -141,7 +147,7 @@ export default function SignInPage() {
                                 </div>
 
                                 <div className="text-sm">
-                                    <Link href="/forgot-password" className="font-semibold text-purple-600 hover:text-pink-600 transition-colors">
+                                    <Link href="/forgot-password" title="Go to forgot password" className="font-semibold text-purple-600 hover:text-purple-700 transition-colors">
                                         Forgot password?
                                     </Link>
                                 </div>
@@ -161,7 +167,7 @@ export default function SignInPage() {
                         <div className="mt-8 text-center">
                             <p className="text-sm text-gray-600 font-medium">
                                 Don&apos;t have an account?{' '}
-                                <Link href="/signup" className="font-bold text-purple-600 hover:text-pink-600 transition-colors">
+                                <Link href="/signup" className="font-bold text-purple-600 hover:text-purple-700 transition-colors">
                                     Sign up
                                 </Link>
                             </p>

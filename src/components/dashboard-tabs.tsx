@@ -51,13 +51,18 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'settings', label: 'Settings', icon: Settings, permission: Permission.SETTINGS },
         { id: 'security', label: 'Security', icon: Shield, permission: Permission.SECURITY },
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
-        { id: 'users', label: 'Users', icon: Users, role: Role.SUPER_ADMIN },
+        { id: 'users', label: 'Users', icon: Users },
     ];
 
-    const tabs = allTabs.filter(tab =>
-        (tab.permission && permissions.includes(tab.permission)) ||
-        (tab.role && role === tab.role)
-    );
+    const tabs = allTabs.filter((tab: { id: string; label: string; icon: any; permission?: Permission; role?: Role }) => {
+        if (tab.id === 'users') {
+            return role === Role.SUPER_ADMIN ||
+                permissions.includes(Permission.MANAGE_USERS) ||
+                permissions.includes(Permission.MANAGE_PERMISSIONS);
+        }
+        return (tab.permission && permissions.includes(tab.permission)) ||
+            (tab.role && role === tab.role);
+    });
     const [activeTab, setActiveTab] = useState(tabs[0]?.id || '');
 
     // User Management State
@@ -77,6 +82,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         !selectedPermissions.every(p => currentUser.permissions.includes(p))
     ) : false;
     const hasRoleChanges = currentUser ? selectedRole !== currentUser.role : false;
+    const isSelfEdit = currentUser ? currentUser.email === userEmail : false;
 
     useEffect(() => {
         if (activeTab === 'users') {
@@ -418,9 +424,9 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                 </select>
                                                 <button
                                                     onClick={handleUpdateRole}
-                                                    disabled={isUpdating || !targetUserId || !hasRoleChanges}
+                                                    disabled={isUpdating || !targetUserId || !hasRoleChanges || isSelfEdit}
                                                     className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-100"
-                                                    title={hasRoleChanges ? "Update Role" : "No changes to role"}
+                                                    title={isSelfEdit ? "You cannot update your own role" : (hasRoleChanges ? "Update Role" : "No changes to role")}
                                                 >
                                                     <UserCheck size={20} />
                                                 </button>
@@ -446,9 +452,9 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                             </div>
                                             <button
                                                 onClick={handleUpdatePermissions}
-                                                disabled={isUpdating || !targetUserId || !hasPermissionChanges}
+                                                disabled={isUpdating || !targetUserId || !hasPermissionChanges || isSelfEdit}
                                                 className="w-full py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold shadow-lg shadow-indigo-200 flex items-center justify-center space-x-2"
-                                                title={hasPermissionChanges ? "Update Permissions" : "No changes to permissions"}
+                                                title={isSelfEdit ? "You cannot update your own permissions" : (hasPermissionChanges ? "Update Permissions" : "No changes to permissions")}
                                             >
                                                 {isUpdating ? (
                                                     <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />

@@ -30,20 +30,25 @@ function ResetPasswordForm() {
     }, [searchParams]);
 
     const validate = () => {
-        const passwordError = validatePassword(formData.newPassword);
-        let confirmError = null;
+        const trimmedPassword = formData.newPassword.trim();
+        const trimmedConfirm = formData.confirmPassword.trim();
+        const newErrors: typeof errors = {};
 
-        if (formData.newPassword !== formData.confirmPassword) {
-            confirmError = 'Passwords do not match';
+        if (!trimmedPassword) {
+            newErrors.newPassword = 'Password is required';
+        } else {
+            const passwordError = validatePassword(trimmedPassword);
+            if (passwordError) newErrors.newPassword = passwordError;
         }
 
-        const newErrors = {
-            newPassword: passwordError || undefined,
-            confirmPassword: confirmError || undefined,
-        };
+        if (!trimmedConfirm) {
+            newErrors.confirmPassword = 'Please confirm your password';
+        } else if (trimmedPassword !== trimmedConfirm) {
+            newErrors.confirmPassword = 'Passwords do not match';
+        }
 
         setErrors(newErrors);
-        return !passwordError && !confirmError;
+        return Object.keys(newErrors).length === 0;
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -62,7 +67,7 @@ function ResetPasswordForm() {
 
         try {
             await axios.post('/api/auth/reset-password', {
-                password: formData.newPassword,
+                password: formData.newPassword.trim(),
                 token,
             });
 
@@ -88,7 +93,7 @@ function ResetPasswordForm() {
     }
 
     return (
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
             <div className="space-y-4">
                 <div className="group">
                     <Input

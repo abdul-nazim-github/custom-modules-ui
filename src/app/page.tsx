@@ -1,4 +1,10 @@
+import { Metadata } from "next";
 import Image from "next/image";
+
+export const metadata: Metadata = {
+  title: "Welcome",
+  description: "Get started with Custom Modules UI - a modern dashboard for your needs.",
+};
 
 export default function Home() {
   return (
