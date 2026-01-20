@@ -1,6 +1,12 @@
 import { LogoutButton } from '@/components/logout-button';
 import { cookies } from 'next/headers';
 import { DashboardTabs } from '@/components/dashboard-tabs';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: 'Dashboard',
+    description: 'Manage your modules and permissions in one place.',
+};
 
 export default async function DashboardPage() {
     const cookieStore = await cookies();

@@ -24,8 +24,11 @@ export default function SignInPage() {
     const [isLoading, setIsLoading] = useState(false);
 
     const validate = () => {
-        const emailError = validateEmail(formData.email);
-        const passwordError = validatePassword(formData.password);
+        const trimmedEmail = formData.email.trim();
+        const trimmedPassword = formData.password.trim();
+
+        const emailError = validateEmail(trimmedEmail);
+        const passwordError = !trimmedPassword ? 'Password is required' : null;
 
         const newErrors = {
             email: emailError || undefined,
@@ -47,7 +50,10 @@ export default function SignInPage() {
 
         try {
             // Call our Next.js API route
-            await axios.post('/api/auth/login', formData);
+            await axios.post('/api/auth/login', {
+                email: formData.email.trim(),
+                password: formData.password.trim()
+            });
 
             toast.success('Welcome back!', { id: loadingToast });
 
@@ -59,10 +65,6 @@ export default function SignInPage() {
             const message = getErrorMessage(error);
 
             toast.error(message, { id: loadingToast });
-
-            setErrors({
-                form: message,
-            });
         } finally {
             setIsLoading(false);
         }
@@ -81,18 +83,18 @@ export default function SignInPage() {
                 <ErrorBoundary>
                     <div className="space-y-8 bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 transition-all duration-300 hover:shadow-purple-500/20">
                         <div className="text-center">
-                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl rotate-3 flex items-center justify-center shadow-lg transform transition-transform hover:rotate-6 hover:scale-110 group">
-                                <Lock className="h-10 w-10 text-white group-hover:animate-bounce" />
+                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg transform transition-transform group">
+                                <Lock className="h-10 w-10 text-white" />
                             </div>
                             <h2 className="mt-6 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 tracking-tight">
                                 Welcome Back
                             </h2>
                             <p className="mt-2 text-sm text-gray-600 font-medium">
-                                Sign in to access your colorful dashboard
+                                Sign in to access your dashboard
                             </p>
                         </div>
 
-                        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                        <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
                             <div className="space-y-4">
                                 <div className="group">
                                     <Input
@@ -102,8 +104,12 @@ export default function SignInPage() {
                                         autoComplete="email"
                                         placeholder="you@example.com"
                                         value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, email: e.target.value });
+                                            if (errors.email) setErrors({ ...errors, email: undefined });
+                                        }}
                                         error={errors.email}
+                                        hideErrorText={errors.email === 'Email is required'}
                                         disabled={isLoading}
                                         className="group-hover:bg-white"
                                     />
@@ -117,8 +123,12 @@ export default function SignInPage() {
                                         autoComplete="current-password"
                                         placeholder="••••••••"
                                         value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, password: e.target.value });
+                                            if (errors.password) setErrors({ ...errors, password: undefined });
+                                        }}
                                         error={errors.password}
+                                        hideErrorText={true}
                                         disabled={isLoading}
                                         className="group-hover:bg-white"
                                     />
@@ -139,23 +149,13 @@ export default function SignInPage() {
                                 </div>
 
                                 <div className="text-sm">
-                                    <Link href="/forgot-password" className="font-semibold text-purple-600 hover:text-pink-600 transition-colors">
+                                    <Link href="/forgot-password" title="Go to forgot password" className="font-semibold text-purple-600 hover:text-purple-700 transition-colors">
                                         Forgot password?
                                     </Link>
                                 </div>
                             </div>
 
-                            {errors.form && (
-                                <div className="rounded-xl bg-red-50 p-4 border border-red-100 animate-in fade-in slide-in-from-top-2 shadow-sm">
-                                    <div className="flex">
-                                        <div className="ml-3">
-                                            <h3 className="text-sm font-bold text-red-800">
-                                                {errors.form}
-                                            </h3>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+
 
                             <Button
                                 type="submit"
@@ -169,7 +169,7 @@ export default function SignInPage() {
                         <div className="mt-8 text-center">
                             <p className="text-sm text-gray-600 font-medium">
                                 Don&apos;t have an account?{' '}
-                                <Link href="/signup" className="font-bold text-purple-600 hover:text-pink-600 transition-colors">
+                                <Link href="/signup" className="font-bold text-purple-600 hover:text-purple-700 transition-colors">
                                     Sign up
                                 </Link>
                             </p>

@@ -4,7 +4,9 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getErrorMessage } from '@/lib/error-utils';
-import { validateEmail, validatePassword } from '@/lib/validation';
+import { validateEmail, validatePassword, validateName, generatePassword } from '@/lib/validation';
+import { PasswordChecklist } from '@/components/password-checklist';
+import { Wand2 } from 'lucide-react';
 import axios from '@/lib/axios';
 import { UserPlus } from 'lucide-react';
 import Link from 'next/link';
@@ -25,16 +27,31 @@ export default function SignUpPage() {
     const [isLoading, setIsLoading] = useState(false);
 
     const validate = () => {
-        const newErrors: typeof errors = {};
-        if (!formData.name) newErrors.name = 'Name is required';
+        const trimmedData = {
+            name: formData.name.trim(),
+            email: formData.email.trim(),
+            password: formData.password.trim(),
+            confirmPassword: formData.confirmPassword.trim(),
+        };
 
-        const emailError = validateEmail(formData.email);
+        const newErrors: typeof errors = {};
+
+        const nameError = validateName(trimmedData.name);
+        if (nameError) newErrors.name = nameError;
+
+        const emailError = validateEmail(trimmedData.email);
         if (emailError) newErrors.email = emailError;
 
-        const passwordError = validatePassword(formData.password);
-        if (passwordError) newErrors.password = passwordError;
+        if (!trimmedData.password) {
+            newErrors.password = 'Password is required';
+        } else {
+            const passwordError = validatePassword(trimmedData.password);
+            if (passwordError) newErrors.password = passwordError;
+        }
 
-        if (formData.password !== formData.confirmPassword) {
+        if (!trimmedData.confirmPassword) {
+            newErrors.confirmPassword = 'Please confirm your password';
+        } else if (trimmedData.password !== trimmedData.confirmPassword) {
             newErrors.confirmPassword = 'Passwords do not match';
         }
 
@@ -54,9 +71,9 @@ export default function SignUpPage() {
         try {
             // Call our Next.js API route
             await axios.post('/api/auth/register', {
-                name: formData.name,
-                email: formData.email,
-                password: formData.password
+                name: formData.name.trim(),
+                email: formData.email.trim(),
+                password: formData.password.trim()
             });
 
             toast.success('Account created! Please sign in.', { id: loadingToast });
@@ -64,7 +81,6 @@ export default function SignUpPage() {
         } catch (error: unknown) {
             const message = getErrorMessage(error);
             toast.error(message, { id: loadingToast });
-            setErrors({ form: message });
         } finally {
             setIsLoading(false);
         }
@@ -82,18 +98,18 @@ export default function SignUpPage() {
                 <ErrorBoundary>
                     <div className="space-y-8 bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 transition-all duration-300 hover:shadow-purple-500/20">
                         <div className="text-center">
-                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl -rotate-3 flex items-center justify-center shadow-lg transform transition-transform hover:rotate-0 hover:scale-110 group">
-                                <UserPlus className="h-10 w-10 text-white group-hover:animate-bounce" />
+                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg transform transition-transform group">
+                                <UserPlus className="h-10 w-10 text-white" />
                             </div>
                             <h2 className="mt-6 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 tracking-tight">
                                 Create Account
                             </h2>
                             <p className="mt-2 text-sm text-gray-600 font-medium">
-                                Join our colorful community today
+                                Join our community today
                             </p>
                         </div>
 
-                        <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
+                        <form className="mt-8 space-y-4" onSubmit={handleSubmit} noValidate>
                             <div className="group">
                                 <Input
                                     id="name"
@@ -101,8 +117,12 @@ export default function SignUpPage() {
                                     type="text"
                                     placeholder="John Doe"
                                     value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, name: e.target.value });
+                                        if (errors.name) setErrors({ ...errors, name: undefined });
+                                    }}
                                     error={errors.name}
+                                    hideErrorText={errors.name === 'Name is required'}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
                                 />
@@ -115,8 +135,12 @@ export default function SignUpPage() {
                                     type="email"
                                     placeholder="you@example.com"
                                     value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, email: e.target.value });
+                                        if (errors.email) setErrors({ ...errors, email: undefined });
+                                    }}
                                     error={errors.email}
+                                    hideErrorText={errors.email === 'Email is required'}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
                                 />
@@ -129,11 +153,32 @@ export default function SignUpPage() {
                                     type="password"
                                     placeholder="••••••••"
                                     value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, password: e.target.value });
+                                        if (errors.password) setErrors({ ...errors, password: undefined });
+                                    }}
                                     error={errors.password}
+                                    hideErrorText={errors.password === 'Password is required'}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
+                                    rightElement={
+                                        <div className="tooltip-trigger">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newPass = generatePassword();
+                                                    setFormData(prev => ({ ...prev, password: newPass, confirmPassword: newPass }));
+                                                    setErrors(prev => ({ ...prev, password: undefined, confirmPassword: undefined }));
+                                                }}
+                                                className="p-1.5 text-gray-400 hover:text-purple-600 transition-colors focus:outline-none cursor-pointer"
+                                            >
+                                                <Wand2 size={18} />
+                                            </button>
+                                            <span className="tooltip">Generate strong password</span>
+                                        </div>
+                                    }
                                 />
+                                <PasswordChecklist password={formData.password} />
                             </div>
 
                             <div className="group">
@@ -143,18 +188,16 @@ export default function SignUpPage() {
                                     type="password"
                                     placeholder="••••••••"
                                     value={formData.confirmPassword}
-                                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, confirmPassword: e.target.value });
+                                        if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: undefined });
+                                    }}
                                     error={errors.confirmPassword}
+                                    hideErrorText={errors.confirmPassword === 'Please confirm your password'}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
                                 />
                             </div>
-
-                            {errors.form && (
-                                <div className="rounded-xl bg-red-50 p-4 border border-red-100 animate-in fade-in slide-in-from-top-2 shadow-sm">
-                                    <p className="text-sm font-bold text-red-800 text-center">{errors.form}</p>
-                                </div>
-                            )}
 
                             <Button
                                 type="submit"
@@ -168,7 +211,7 @@ export default function SignUpPage() {
                         <div className="text-center">
                             <p className="text-sm text-gray-600 font-medium">
                                 Already have an account?{' '}
-                                <Link href="/signin" className="font-bold text-purple-600 hover:text-pink-600 transition-colors">
+                                <Link href="/signin" className="font-bold text-purple-600">
                                     Sign in
                                 </Link>
                             </p>

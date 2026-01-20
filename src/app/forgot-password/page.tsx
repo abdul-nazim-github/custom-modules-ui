@@ -32,14 +32,13 @@ export default function ForgotPasswordPage() {
         const loadingToast = toast.loading('Sending reset link...');
 
         try {
-            await axios.post('/api/auth/forgot-password', { email });
+            await axios.post('/api/auth/forgot-password', { email: email.trim() });
 
-            toast.success('Reset link sent to your email!', { id: loadingToast });
+            toast.success('Reset link sent! Check your email.', { id: loadingToast });
             setIsSubmitted(true);
         } catch (err: unknown) {
             const message = getErrorMessage(err);
             toast.error(message, { id: loadingToast });
-            setError(message);
         } finally {
             setIsLoading(false);
         }
@@ -89,8 +88,8 @@ export default function ForgotPasswordPage() {
                 <ErrorBoundary>
                     <div className="space-y-8 bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 transition-all duration-300 hover:shadow-purple-500/20">
                         <div className="text-center">
-                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl rotate-12 flex items-center justify-center shadow-lg transform transition-transform hover:rotate-0 hover:scale-110 group">
-                                <KeyRound className="h-10 w-10 text-white group-hover:animate-spin-slow" />
+                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg transform transition-transform group">
+                                <KeyRound className="h-10 w-10 text-white" />
                             </div>
                             <h2 className="mt-6 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 tracking-tight">
                                 Forgot Password
@@ -100,7 +99,7 @@ export default function ForgotPasswordPage() {
                             </p>
                         </div>
 
-                        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+                        <form className="mt-8 space-y-6" onSubmit={handleSubmit} noValidate>
                             <div className="space-y-4">
                                 <div className="group">
                                     <Input
@@ -109,8 +108,12 @@ export default function ForgotPasswordPage() {
                                         type="email"
                                         placeholder="you@example.com"
                                         value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
-                                        error={error}
+                                        onChange={(e) => {
+                                            setEmail(e.target.value);
+                                            if (error) setError('');
+                                        }}
+                                        error={error || undefined}
+                                        hideErrorText={error === 'Email is required'}
                                         disabled={isLoading}
                                         className="group-hover:bg-white"
                                     />
@@ -127,7 +130,7 @@ export default function ForgotPasswordPage() {
                         </form>
 
                         <div className="text-center">
-                            <Link href="/signin" className="inline-flex items-center text-sm font-bold text-gray-500 hover:text-purple-600 transition-colors group">
+                            <Link href="/signin" className="inline-flex items-center text-sm font-bold text-purple-600 group">
                                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
                                 Back to Sign in
                             </Link>

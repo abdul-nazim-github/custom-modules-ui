@@ -12,6 +12,25 @@
   --font-mono: var(--font-geist-mono);
 }
 
+@layer utilities {
+  .tooltip-trigger {
+    @apply relative flex items-center justify-center;
+  }
+
+  .tooltip {
+    @apply absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-gray-900 text-white text-[10px] font-bold rounded opacity-0 invisible transition-all duration-200 whitespace-nowrap z-50 pointer-events-none;
+  }
+
+  .tooltip::after {
+    content: '';
+    @apply absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900;
+  }
+
+  .tooltip-trigger:hover .tooltip {
+    @apply opacity-100 visible -translate-y-1;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     --background: #0a0a0a;
