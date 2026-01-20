@@ -4,7 +4,9 @@ import { ErrorBoundary } from '@/components/error-boundary';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { getErrorMessage } from '@/lib/error-utils';
-import { validateEmail, validatePassword, validateName } from '@/lib/validation';
+import { validateEmail, validatePassword, validateName, generatePassword } from '@/lib/validation';
+import { PasswordChecklist } from '@/components/password-checklist';
+import { Wand2 } from 'lucide-react';
 import axios from '@/lib/axios';
 import { UserPlus } from 'lucide-react';
 import Link from 'next/link';
@@ -96,8 +98,8 @@ export default function SignUpPage() {
                 <ErrorBoundary>
                     <div className="space-y-8 bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 transition-all duration-300 hover:shadow-purple-500/20">
                         <div className="text-center">
-                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl -rotate-3 flex items-center justify-center shadow-lg transform transition-transform hover:rotate-0 hover:scale-110 group">
-                                <UserPlus className="h-10 w-10 text-white group-hover:animate-bounce" />
+                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg transform transition-transform group">
+                                <UserPlus className="h-10 w-10 text-white" />
                             </div>
                             <h2 className="mt-6 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 tracking-tight">
                                 Create Account
@@ -120,6 +122,7 @@ export default function SignUpPage() {
                                         if (errors.name) setErrors({ ...errors, name: undefined });
                                     }}
                                     error={errors.name}
+                                    hideErrorText={errors.name === 'Name is required'}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
                                 />
@@ -137,6 +140,7 @@ export default function SignUpPage() {
                                         if (errors.email) setErrors({ ...errors, email: undefined });
                                     }}
                                     error={errors.email}
+                                    hideErrorText={errors.email === 'Email is required'}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
                                 />
@@ -154,9 +158,27 @@ export default function SignUpPage() {
                                         if (errors.password) setErrors({ ...errors, password: undefined });
                                     }}
                                     error={errors.password}
+                                    hideErrorText={errors.password === 'Password is required'}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
+                                    rightElement={
+                                        <div className="tooltip-trigger">
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newPass = generatePassword();
+                                                    setFormData(prev => ({ ...prev, password: newPass, confirmPassword: newPass }));
+                                                    setErrors(prev => ({ ...prev, password: undefined, confirmPassword: undefined }));
+                                                }}
+                                                className="p-1.5 text-gray-400 hover:text-purple-600 transition-colors focus:outline-none cursor-pointer"
+                                            >
+                                                <Wand2 size={18} />
+                                            </button>
+                                            <span className="tooltip">Generate strong password</span>
+                                        </div>
+                                    }
                                 />
+                                <PasswordChecklist password={formData.password} />
                             </div>
 
                             <div className="group">
@@ -171,6 +193,7 @@ export default function SignUpPage() {
                                         if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: undefined });
                                     }}
                                     error={errors.confirmPassword}
+                                    hideErrorText={errors.confirmPassword === 'Please confirm your password'}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
                                 />
@@ -188,7 +211,7 @@ export default function SignUpPage() {
                         <div className="text-center">
                             <p className="text-sm text-gray-600 font-medium">
                                 Already have an account?{' '}
-                                <Link href="/signin" className="font-bold text-purple-600 hover:text-pink-600 transition-colors">
+                                <Link href="/signin" className="font-bold text-purple-600">
                                     Sign in
                                 </Link>
                             </p>

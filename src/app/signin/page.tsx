@@ -28,7 +28,7 @@ export default function SignInPage() {
         const trimmedPassword = formData.password.trim();
 
         const emailError = validateEmail(trimmedEmail);
-        const passwordError = validatePassword(trimmedPassword);
+        const passwordError = !trimmedPassword ? 'Password is required' : null;
 
         const newErrors = {
             email: emailError || undefined,
@@ -83,8 +83,8 @@ export default function SignInPage() {
                 <ErrorBoundary>
                     <div className="space-y-8 bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 transition-all duration-300 hover:shadow-purple-500/20">
                         <div className="text-center">
-                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl rotate-3 flex items-center justify-center shadow-lg transform transition-transform hover:rotate-6 hover:scale-110 group">
-                                <Lock className="h-10 w-10 text-white group-hover:animate-bounce" />
+                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg transform transition-transform group">
+                                <Lock className="h-10 w-10 text-white" />
                             </div>
                             <h2 className="mt-6 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 tracking-tight">
                                 Welcome Back
@@ -109,6 +109,7 @@ export default function SignInPage() {
                                             if (errors.email) setErrors({ ...errors, email: undefined });
                                         }}
                                         error={errors.email}
+                                        hideErrorText={errors.email === 'Email is required'}
                                         disabled={isLoading}
                                         className="group-hover:bg-white"
                                     />
@@ -127,6 +128,7 @@ export default function SignInPage() {
                                             if (errors.password) setErrors({ ...errors, password: undefined });
                                         }}
                                         error={errors.password}
+                                        hideErrorText={true}
                                         disabled={isLoading}
                                         className="group-hover:bg-white"
                                     />

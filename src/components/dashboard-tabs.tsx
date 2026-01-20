@@ -84,6 +84,11 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     const hasRoleChanges = currentUser ? selectedRole !== currentUser.role : false;
     const isSelfEdit = currentUser ? currentUser.email === userEmail : false;
 
+    // Permission flags for logged-in user
+    const canManageUsers = role === Role.SUPER_ADMIN || permissions.includes(Permission.MANAGE_USERS);
+    const canManagePermissions = role === Role.SUPER_ADMIN || permissions.includes(Permission.MANAGE_PERMISSIONS);
+    const canDeleteUsers = role === Role.SUPER_ADMIN;
+
     useEffect(() => {
         if (activeTab === 'users') {
             fetchUsers();
@@ -416,7 +421,8 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                 <select
                                                     value={selectedRole}
                                                     onChange={(e) => setSelectedRole(e.target.value as Role)}
-                                                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium"
+                                                    disabled={!canManageUsers || isSelfEdit}
+                                                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
                                                     <option value={Role.USER}>User</option>
                                                     <option value={Role.ADMIN}>Admin</option>
@@ -424,9 +430,9 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                 </select>
                                                 <button
                                                     onClick={handleUpdateRole}
-                                                    disabled={isUpdating || !targetUserId || !hasRoleChanges || isSelfEdit}
+                                                    disabled={isUpdating || !targetUserId || !hasRoleChanges || isSelfEdit || !canManageUsers}
                                                     className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-100"
-                                                    title={isSelfEdit ? "You cannot update your own role" : (hasRoleChanges ? "Update Role" : "No changes to role")}
+                                                    title={!canManageUsers ? "You don't have permission to manage roles" : (isSelfEdit ? "You cannot update your own role" : (hasRoleChanges ? "Update Role" : "No changes to role"))}
                                                 >
                                                     <UserCheck size={20} />
                                                 </button>
@@ -441,7 +447,8 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                     <button
                                                         key={perm}
                                                         onClick={() => togglePermission(perm)}
-                                                        className={`px-4 py-2 text-left text-xs font-bold rounded-lg border transition-all ${selectedPermissions.includes(perm)
+                                                        disabled={!canManagePermissions || isSelfEdit}
+                                                        className={`px-4 py-2 text-left text-xs font-bold rounded-lg border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${selectedPermissions.includes(perm)
                                                             ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
                                                             : 'bg-white text-gray-800 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
                                                             }`}
@@ -452,9 +459,9 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                             </div>
                                             <button
                                                 onClick={handleUpdatePermissions}
-                                                disabled={isUpdating || !targetUserId || !hasPermissionChanges || isSelfEdit}
+                                                disabled={isUpdating || !targetUserId || !hasPermissionChanges || isSelfEdit || !canManagePermissions}
                                                 className="w-full py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold shadow-lg shadow-indigo-200 flex items-center justify-center space-x-2"
-                                                title={isSelfEdit ? "You cannot update your own permissions" : (hasPermissionChanges ? "Update Permissions" : "No changes to permissions")}
+                                                title={!canManagePermissions ? "You don't have permission to manage permissions" : (isSelfEdit ? "You cannot update your own permissions" : (hasPermissionChanges ? "Update Permissions" : "No changes to permissions"))}
                                             >
                                                 {isUpdating ? (
                                                     <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -555,9 +562,9 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                             </button>
                                                             <button
                                                                 onClick={() => handleDeleteUser(user.id || user._id || '', user.name)}
-                                                                disabled={user.email === userEmail}
+                                                                disabled={user.email === userEmail || !canDeleteUsers}
                                                                 className="p-2 text-gray-500 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                                                                title={user.email === userEmail ? "You cannot delete your own account" : "Delete User"}
+                                                                title={!canDeleteUsers ? "Only Super Admins can delete users" : (user.email === userEmail ? "You cannot delete your own account" : "Delete User")}
                                                             >
                                                                 <Trash2 size={16} />
                                                             </button>

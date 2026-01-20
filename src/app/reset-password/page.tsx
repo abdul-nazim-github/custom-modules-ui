@@ -6,7 +6,9 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { KeyRound, ArrowLeft } from 'lucide-react';
-import { validatePassword } from '@/lib/validation';
+import { validatePassword, generatePassword } from '@/lib/validation';
+import { PasswordChecklist } from '@/components/password-checklist';
+import { Wand2 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { getErrorMessage } from '@/lib/error-utils';
 import axios from '@/lib/axios';
@@ -107,15 +109,33 @@ function ResetPasswordForm() {
                             if (errors.newPassword) setErrors({ ...errors, newPassword: undefined });
                         }}
                         error={errors.newPassword}
+                        hideErrorText={errors.newPassword === 'Password is required'}
                         disabled={isLoading}
                         className="group-hover:bg-white"
+                        rightElement={
+                            <div className="tooltip-trigger">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const newPass = generatePassword();
+                                        setFormData(prev => ({ ...prev, newPassword: newPass, confirmPassword: newPass }));
+                                        setErrors(prev => ({ ...prev, newPassword: undefined, confirmPassword: undefined }));
+                                    }}
+                                    className="p-1.5 text-gray-400 hover:text-purple-600 transition-colors focus:outline-none cursor-pointer"
+                                >
+                                    <Wand2 size={18} />
+                                </button>
+                                <span className="tooltip">Generate strong password</span>
+                            </div>
+                        }
                     />
+                    <PasswordChecklist password={formData.newPassword} />
                 </div>
 
                 <div className="group">
                     <Input
                         id="confirmPassword"
-                        label="Confirm Password"
+                        label="Confirm New Password"
                         type="password"
                         placeholder="••••••••"
                         value={formData.confirmPassword}
@@ -124,6 +144,7 @@ function ResetPasswordForm() {
                             if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: undefined });
                         }}
                         error={errors.confirmPassword}
+                        hideErrorText={errors.confirmPassword === 'Please confirm your password'}
                         disabled={isLoading}
                         className="group-hover:bg-white"
                     />
@@ -154,8 +175,8 @@ export default function ResetPasswordPage() {
                 <ErrorBoundary>
                     <div className="space-y-8 bg-white/90 backdrop-blur-xl p-8 rounded-3xl shadow-2xl border border-white/50 transition-all duration-300 hover:shadow-purple-500/20">
                         <div className="text-center">
-                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl rotate-12 flex items-center justify-center shadow-lg transform transition-transform hover:rotate-0 hover:scale-110 group">
-                                <KeyRound className="h-10 w-10 text-white group-hover:animate-spin-slow" />
+                            <div className="mx-auto h-20 w-20 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg transform transition-transform group">
+                                <KeyRound className="h-10 w-10 text-white" />
                             </div>
                             <h2 className="mt-6 text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600 tracking-tight">
                                 New Password
