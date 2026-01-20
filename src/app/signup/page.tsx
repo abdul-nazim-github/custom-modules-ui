@@ -64,7 +64,6 @@ export default function SignUpPage() {
         } catch (error: unknown) {
             const message = getErrorMessage(error);
             toast.error(message, { id: loadingToast });
-            setErrors({ form: message });
         } finally {
             setIsLoading(false);
         }
@@ -101,7 +100,10 @@ export default function SignUpPage() {
                                     type="text"
                                     placeholder="John Doe"
                                     value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, name: e.target.value });
+                                        if (errors.name) setErrors({ ...errors, name: undefined });
+                                    }}
                                     error={errors.name}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
@@ -115,7 +117,10 @@ export default function SignUpPage() {
                                     type="email"
                                     placeholder="you@example.com"
                                     value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, email: e.target.value });
+                                        if (errors.email) setErrors({ ...errors, email: undefined });
+                                    }}
                                     error={errors.email}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
@@ -129,7 +134,10 @@ export default function SignUpPage() {
                                     type="password"
                                     placeholder="••••••••"
                                     value={formData.password}
-                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, password: e.target.value });
+                                        if (errors.password) setErrors({ ...errors, password: undefined });
+                                    }}
                                     error={errors.password}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
@@ -143,18 +151,15 @@ export default function SignUpPage() {
                                     type="password"
                                     placeholder="••••••••"
                                     value={formData.confirmPassword}
-                                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, confirmPassword: e.target.value });
+                                        if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: undefined });
+                                    }}
                                     error={errors.confirmPassword}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
                                 />
                             </div>
-
-                            {errors.form && (
-                                <div className="rounded-xl bg-red-50 p-4 border border-red-100 animate-in fade-in slide-in-from-top-2 shadow-sm">
-                                    <p className="text-sm font-bold text-red-800 text-center">{errors.form}</p>
-                                </div>
-                            )}
 
                             <Button
                                 type="submit"

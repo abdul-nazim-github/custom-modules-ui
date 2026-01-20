@@ -59,10 +59,6 @@ export default function SignInPage() {
             const message = getErrorMessage(error);
 
             toast.error(message, { id: loadingToast });
-
-            setErrors({
-                form: message,
-            });
         } finally {
             setIsLoading(false);
         }
@@ -102,7 +98,10 @@ export default function SignInPage() {
                                         autoComplete="email"
                                         placeholder="you@example.com"
                                         value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, email: e.target.value });
+                                            if (errors.email) setErrors({ ...errors, email: undefined });
+                                        }}
                                         error={errors.email}
                                         disabled={isLoading}
                                         className="group-hover:bg-white"
@@ -117,7 +116,10 @@ export default function SignInPage() {
                                         autoComplete="current-password"
                                         placeholder="••••••••"
                                         value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                        onChange={(e) => {
+                                            setFormData({ ...formData, password: e.target.value });
+                                            if (errors.password) setErrors({ ...errors, password: undefined });
+                                        }}
                                         error={errors.password}
                                         disabled={isLoading}
                                         className="group-hover:bg-white"
@@ -145,17 +147,7 @@ export default function SignInPage() {
                                 </div>
                             </div>
 
-                            {errors.form && (
-                                <div className="rounded-xl bg-red-50 p-4 border border-red-100 animate-in fade-in slide-in-from-top-2 shadow-sm">
-                                    <div className="flex">
-                                        <div className="ml-3">
-                                            <h3 className="text-sm font-bold text-red-800">
-                                                {errors.form}
-                                            </h3>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+
 
                             <Button
                                 type="submit"

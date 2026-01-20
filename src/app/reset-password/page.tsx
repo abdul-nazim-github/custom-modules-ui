@@ -71,7 +71,6 @@ function ResetPasswordForm() {
         } catch (err: unknown) {
             const message = getErrorMessage(err);
             toast.error(message, { id: loadingToast });
-            setErrors({ newPassword: message });
         } finally {
             setIsLoading(false);
         }
@@ -98,7 +97,10 @@ function ResetPasswordForm() {
                         type="password"
                         placeholder="••••••••"
                         value={formData.newPassword}
-                        onChange={(e) => setFormData({ ...formData, newPassword: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, newPassword: e.target.value });
+                            if (errors.newPassword) setErrors({ ...errors, newPassword: undefined });
+                        }}
                         error={errors.newPassword}
                         disabled={isLoading}
                         className="group-hover:bg-white"
@@ -112,7 +114,10 @@ function ResetPasswordForm() {
                         type="password"
                         placeholder="••••••••"
                         value={formData.confirmPassword}
-                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                        onChange={(e) => {
+                            setFormData({ ...formData, confirmPassword: e.target.value });
+                            if (errors.confirmPassword) setErrors({ ...errors, confirmPassword: undefined });
+                        }}
                         error={errors.confirmPassword}
                         disabled={isLoading}
                         className="group-hover:bg-white"

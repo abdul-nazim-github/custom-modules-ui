@@ -39,7 +39,6 @@ export default function ForgotPasswordPage() {
         } catch (err: unknown) {
             const message = getErrorMessage(err);
             toast.error(message, { id: loadingToast });
-            setError(message);
         } finally {
             setIsLoading(false);
         }
@@ -109,7 +108,10 @@ export default function ForgotPasswordPage() {
                                         type="email"
                                         placeholder="you@example.com"
                                         value={email}
-                                        onChange={(e) => setEmail(e.target.value)}
+                                        onChange={(e) => {
+                                            setEmail(e.target.value);
+                                            if (error) setError(undefined);
+                                        }}
                                         error={error}
                                         disabled={isLoading}
                                         className="group-hover:bg-white"
