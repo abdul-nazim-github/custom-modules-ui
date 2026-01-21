@@ -67,6 +67,10 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                             if (restrictSymbols) {
                                 value = value.replace(/[^a-zA-Z\s]/g, '');
                             }
+                            // Strictly enforce maxLength
+                            if (props.maxLength && value.length > props.maxLength) {
+                                value = value.slice(0, props.maxLength);
+                            }
                             e.target.value = value;
                             props.onChange?.(e);
                         }}

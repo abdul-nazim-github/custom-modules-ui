@@ -127,6 +127,7 @@ export default function SignUpPage() {
                                     className="group-hover:bg-white"
                                     restrictNumbers={true}
                                     restrictSymbols={true}
+                                    maxLength={50}
                                 />
                             </div>
 
