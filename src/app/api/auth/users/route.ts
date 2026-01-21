@@ -12,8 +12,11 @@ interface BackendUser {
   permissions: string[];
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const page = searchParams.get('page') || '1';
+    const limit = searchParams.get('limit') || '10';
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('accessToken')?.value;
     if (!accessToken) {
@@ -28,11 +31,13 @@ export async function GET() {
 
     try {
       const response = await axios.get(`${backendUrl}/auth/users`, {
+        params: { page, limit },
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
       });
       // Map _id to id if necessary
+
       if (response.data.success && Array.isArray(response.data.data)) {
         response.data.data = response.data.data.map((user: BackendUser) => {
           const mappedUser = {
