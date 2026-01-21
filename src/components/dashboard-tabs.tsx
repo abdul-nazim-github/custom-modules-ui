@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { User, Settings, Activity, Mail, Shield, Bell, Users, Plus, Trash2, Edit2, UserCheck } from 'lucide-react';
-import axios from '@/lib/axios';
+import { useState, useEffect, useRef } from 'react';
+import { User, Settings, Activity, Mail, Shield, Bell, Users, Plus, Trash2, Edit2, UserCheck, ChevronLeft, ChevronRight, LucideIcon } from 'lucide-react';
+import api from '@/lib/axios';
+import axios from 'axios';
 import toast from 'react-hot-toast';
 
 export enum Role {
@@ -54,7 +55,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'users', label: 'Users', icon: Users },
     ];
 
-    const tabs = allTabs.filter((tab: { id: string; label: string; icon: any; permission?: Permission; role?: Role }) => {
+    const tabs = allTabs.filter((tab: { id: string; label: string; icon: LucideIcon; permission?: Permission; role?: Role }) => {
         if (tab.id === 'users') {
             return role === Role.SUPER_ADMIN ||
                 permissions.includes(Permission.MANAGE_USERS) ||
@@ -74,6 +75,11 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [userToDelete, setUserToDelete] = useState<{ id: string, name: string } | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+    const [totalUsers, setTotalUsers] = useState(0);
 
     // Comparison logic for disabling buttons
     const currentUser = users.find(u => (u.id || u._id) === targetUserId);
@@ -95,13 +101,25 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         }
     }, [activeTab]);
 
-    const fetchUsers = async () => {
+    const fetchUsers = async (page = currentPage, currentLimit = limit) => {
         setIsLoadingUsers(true);
         try {
-            const response = await axios.get('/api/auth/users');
+            const response = await api.get(`/api/auth/users?page=${page}&limit=${currentLimit}`);
             if (response.data.success) {
                 const fetchedUsers = response.data.data;
                 setUsers(fetchedUsers);
+
+                // Extract totalCount from meta as per the new API response format
+                const total = response.data.meta?.totalCount ??
+                    response.data.total ??
+                    response.data.totalUsers ??
+                    response.data.totalCount ??
+                    response.data.count ??
+                    fetchedUsers.length;
+
+                setTotalUsers(total);
+                setCurrentPage(page);
+                setLimit(currentLimit);
                 if (fetchedUsers.length > 0) {
                     // Update current target user data if already selected
                     if (targetUserId) {
@@ -140,7 +158,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         setIsUpdating(true);
         const loadingToast = toast.loading('Updating permissions...');
         try {
-            await axios.put(`/api/auth/users/${targetUserId}/permissions`, {
+            await api.put(`/api/auth/users/${targetUserId}/permissions`, {
                 permissions: selectedPermissions
             });
             toast.success('Permissions updated successfully!', { id: loadingToast });
@@ -169,7 +187,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         setIsUpdating(true);
         const loadingToast = toast.loading('Updating role...');
         try {
-            await axios.put(`/api/auth/users/${targetUserId}/role`, {
+            await api.put(`/api/auth/users/${targetUserId}/role`, {
                 role: selectedRole
             });
             toast.success('Role updated successfully!', { id: loadingToast });
@@ -198,9 +216,16 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     const confirmDeleteUser = async () => {
         if (!userToDelete) return;
 
+        setIsDeleting(true);
         const loadingToast = toast.loading('Deleting user...');
+
+        // Create new AbortController
+        abortControllerRef.current = new AbortController();
+
         try {
-            await axios.delete(`/api/auth/users/${userToDelete.id}`);
+            await api.delete(`/api/auth/users/${userToDelete.id}`, {
+                signal: abortControllerRef.current.signal
+            });
             toast.success('User deleted successfully!', { id: loadingToast });
             if (targetUserId === userToDelete.id) {
                 setTargetUserId('');
@@ -208,9 +233,21 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             setShowDeleteModal(false);
             setUserToDelete(null);
             fetchUsers(); // Refresh list
-        } catch (error) {
-            console.error('Delete user error:', error);
-            toast.error('Failed to delete user', { id: loadingToast });
+        } catch (error: unknown) {
+            if (axios.isAxiosError(error)) {
+                if (error.name === 'CanceledError' || error.name === 'AbortError') {
+                    toast.dismiss(loadingToast);
+                } else {
+                    console.error('Delete user error:', error);
+                    toast.error('Failed to delete user', { id: loadingToast });
+                }
+            } else {
+                console.error('Delete user error:', error);
+                toast.error('An unexpected error occurred', { id: loadingToast });
+            }
+        } finally {
+            setIsDeleting(false);
+            abortControllerRef.current = null;
         }
     };
 
@@ -379,14 +416,33 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                     <div className="p-8 transition-all duration-500 opacity-100 translate-y-0">
                         <div className="flex justify-between items-center mb-8">
                             <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-                            <button
-                                onClick={fetchUsers}
-                                disabled={isLoadingUsers}
-                                className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
-                            >
-                                <Activity size={18} className={isLoadingUsers ? 'animate-spin' : ''} />
-                                <span>Refresh List</span>
-                            </button>
+                            <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-sm text-gray-500 font-medium">Show:</span>
+                                    <select
+                                        value={limit}
+                                        onChange={(e) => {
+                                            const newLimit = Number(e.target.value);
+                                            setLimit(newLimit);
+                                            fetchUsers(1, newLimit);
+                                        }}
+                                        className="px-3 py-1.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 text-sm font-medium"
+                                    >
+                                        <option value={10}>10</option>
+                                        <option value={20}>20</option>
+                                        <option value={50}>50</option>
+                                        <option value={100}>100</option>
+                                    </select>
+                                </div>
+                                <button
+                                    onClick={() => fetchUsers()}
+                                    disabled={isLoadingUsers}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                                >
+                                    <Activity size={18} className={isLoadingUsers ? 'animate-spin' : ''} />
+                                    <span>Refresh List</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -477,7 +533,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
 
                             {/* User List Table */}
                             <div className="lg:col-span-2 overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
-                                <div className="overflow-x-auto">
+                                <div className="overflow-x-auto min-h-[580px]">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-100">
                                             <tr>
@@ -575,6 +631,69 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                         </tbody>
                                     </table>
                                 </div>
+                                {/* Pagination Controls */}
+                                {users.length > 0 && (
+                                    <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                                        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                            <div>
+                                                <p className="text-sm text-gray-700">
+                                                    Showing <span className="font-bold">{(currentPage - 1) * limit + 1}</span> to <span className="font-bold">{Math.min(currentPage * limit, totalUsers)}</span> of{' '}
+                                                    <span className="font-bold">{totalUsers}</span> results
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                                    <button
+                                                        onClick={() => fetchUsers(currentPage - 1)}
+                                                        disabled={currentPage === 1 || isLoadingUsers}
+                                                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        <span className="sr-only">Previous</span>
+                                                        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                                                    </button>
+                                                    {Array.from({ length: Math.max(1, Math.ceil(totalUsers / limit)) }).map((_, i) => (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => fetchUsers(i + 1)}
+                                                            disabled={currentPage === i + 1 || isLoadingUsers}
+                                                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${currentPage === i + 1
+                                                                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                                                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50'
+                                                                }`}
+                                                        >
+                                                            {i + 1}
+                                                        </button>
+                                                    ))}
+                                                    <button
+                                                        onClick={() => fetchUsers(currentPage + 1)}
+                                                        disabled={currentPage * limit >= totalUsers || isLoadingUsers}
+                                                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        <span className="sr-only">Next</span>
+                                                        <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                                                    </button>
+                                                </nav>
+                                            </div>
+                                        </div>
+                                        {/* Mobile view navigation */}
+                                        <div className="flex-1 flex justify-between sm:hidden">
+                                            <button
+                                                onClick={() => fetchUsers(currentPage - 1)}
+                                                disabled={currentPage === 1 || isLoadingUsers}
+                                                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Previous
+                                            </button>
+                                            <button
+                                                onClick={() => fetchUsers(currentPage + 1)}
+                                                disabled={currentPage * limit >= totalUsers || isLoadingUsers}
+                                                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -598,6 +717,9 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                         <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
                             <button
                                 onClick={() => {
+                                    if (isDeleting && abortControllerRef.current) {
+                                        abortControllerRef.current.abort();
+                                    }
                                     setShowDeleteModal(false);
                                     setUserToDelete(null);
                                 }}
@@ -607,9 +729,11 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                             </button>
                             <button
                                 onClick={confirmDeleteUser}
-                                className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-lg shadow-red-200"
+                                disabled={isDeleting}
+                                className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-lg shadow-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
                             >
-                                Delete User
+                                {isDeleting && <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                                <span>{isDeleting ? 'Deleting...' : 'Delete User'}</span>
                             </button>
                         </div>
                     </div>
