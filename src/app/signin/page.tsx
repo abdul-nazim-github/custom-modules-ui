@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import axios from '@/lib/axios';
 import { Lock } from 'lucide-react';
 import Link from 'next/link';
@@ -149,7 +150,15 @@ export default function SignInPage() {
                                 </div>
 
                                 <div className="text-sm">
-                                    <Link href="/forgot-password" title="Go to forgot password" className="font-semibold text-purple-600 hover:text-purple-700 transition-colors">
+                                    <Link
+                                        href="/forgot-password"
+                                        title="Go to forgot password"
+                                        className={cn(
+                                            "font-semibold text-purple-600 hover:text-purple-700 transition-colors",
+                                            isLoading && "pointer-events-none opacity-50"
+                                        )}
+                                        tabIndex={isLoading ? -1 : undefined}
+                                    >
                                         Forgot password?
                                     </Link>
                                 </div>
@@ -169,7 +178,14 @@ export default function SignInPage() {
                         <div className="mt-8 text-center">
                             <p className="text-sm text-gray-600 font-medium">
                                 Don&apos;t have an account?{' '}
-                                <Link href="/signup" className="font-bold text-purple-600 hover:text-purple-700 transition-colors">
+                                <Link
+                                    href="/signup"
+                                    className={cn(
+                                        "font-bold text-purple-600 hover:text-purple-700 transition-colors",
+                                        isLoading && "pointer-events-none opacity-50"
+                                    )}
+                                    tabIndex={isLoading ? -1 : undefined}
+                                >
                                     Sign up
                                 </Link>
                             </p>

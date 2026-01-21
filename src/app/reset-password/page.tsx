@@ -11,10 +11,17 @@ import { PasswordChecklist } from '@/components/password-checklist';
 import { Wand2 } from 'lucide-react';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { getErrorMessage } from '@/lib/error-utils';
+import { cn } from '@/lib/utils';
 import axios from '@/lib/axios';
 import toast from 'react-hot-toast';
 
-function ResetPasswordForm({ onTokenVerified }: { onTokenVerified: (isValid: boolean) => void }) {
+function ResetPasswordForm({
+    onTokenVerified,
+    onLoadingChange
+}: {
+    onTokenVerified: (isValid: boolean) => void;
+    onLoadingChange?: (isLoading: boolean) => void;
+}) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [formData, setFormData] = useState({
@@ -22,7 +29,12 @@ function ResetPasswordForm({ onTokenVerified }: { onTokenVerified: (isValid: boo
         confirmPassword: '',
     });
     const [errors, setErrors] = useState<{ newPassword?: string; confirmPassword?: string }>({});
-    const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoadingState] = useState(false);
+
+    const setIsLoading = (loading: boolean) => {
+        setIsLoadingState(loading);
+        onLoadingChange?.(loading);
+    };
     const [isVerifying, setIsVerifying] = useState(true);
     const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
     const [token, setToken] = useState<string | null>(null);
@@ -132,7 +144,11 @@ function ResetPasswordForm({ onTokenVerified }: { onTokenVerified: (isValid: boo
                 <div className="pt-4">
                     <Link
                         href="/forgot-password"
-                        className="inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-purple-600 hover:bg-purple-700 transition-colors shadow-md hover:shadow-lg"
+                        className={cn(
+                            "inline-flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-xl text-white bg-purple-600 hover:bg-purple-700 transition-colors shadow-md hover:shadow-lg",
+                            isLoading && "pointer-events-none opacity-50"
+                        )}
+                        tabIndex={isLoading ? -1 : undefined}
                     >
                         Request New Link
                     </Link>
@@ -211,6 +227,7 @@ function ResetPasswordForm({ onTokenVerified }: { onTokenVerified: (isValid: boo
 
 export default function ResetPasswordPage() {
     const [isValidToken, setIsValidToken] = useState<boolean | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-[conic-gradient(at_top_right,_var(--tw-gradient-stops))] from-indigo-400 via-purple-500 to-pink-500 p-4 sm:px-6 lg:px-8 relative overflow-hidden">
@@ -238,11 +255,21 @@ export default function ResetPasswordPage() {
                         )}
 
                         <Suspense fallback={<div className="text-center">Loading...</div>}>
-                            <ResetPasswordForm onTokenVerified={setIsValidToken} />
+                            <ResetPasswordForm
+                                onTokenVerified={setIsValidToken}
+                                onLoadingChange={setIsLoading}
+                            />
                         </Suspense>
 
                         <div className="text-center">
-                            <Link href="/signin" className="inline-flex items-center text-sm font-bold text-gray-500 hover:text-purple-600 transition-colors group">
+                            <Link
+                                href="/signin"
+                                className={cn(
+                                    "inline-flex items-center text-sm font-bold text-gray-500 hover:text-purple-600 transition-colors group",
+                                    isLoading && "pointer-events-none opacity-50"
+                                )}
+                                tabIndex={isLoading ? -1 : undefined}
+                            >
                                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
                                 Back to Sign in
                             </Link>
