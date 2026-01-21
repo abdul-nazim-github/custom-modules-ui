@@ -8,11 +8,14 @@ export interface InputProps
     error?: string;
     hideErrorText?: boolean;
     rightElement?: React.ReactNode;
+    restrictNumbers?: boolean;
+    restrictSymbols?: boolean;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-    ({ className, type, label, error, hideErrorText, rightElement, id, ...props }, ref) => {
-        const inputId = id || React.useId();
+    ({ className, type, label, error, hideErrorText, rightElement, restrictNumbers, restrictSymbols, id, ...props }, ref) => {
+        const generatedId = React.useId();
+        const inputId = id || generatedId;
         const [showPassword, setShowPassword] = React.useState(false);
 
         const isPassword = type === 'password';
@@ -41,6 +44,36 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
                         ref={ref}
                         id={inputId}
                         {...props}
+                        onKeyDown={(e) => {
+                            if (isPassword && e.key === ' ') {
+                                e.preventDefault();
+                            }
+                            if (restrictNumbers && /[0-9]/.test(e.key)) {
+                                e.preventDefault();
+                            }
+                            if (restrictSymbols && /[^a-zA-Z\s]/.test(e.key) && e.key.length === 1) {
+                                e.preventDefault();
+                            }
+                            props.onKeyDown?.(e);
+                        }}
+                        onChange={(e) => {
+                            let value = e.target.value;
+                            if (isPassword) {
+                                value = value.replace(/\s/g, '');
+                            }
+                            if (restrictNumbers) {
+                                value = value.replace(/[0-9]/g, '');
+                            }
+                            if (restrictSymbols) {
+                                value = value.replace(/[^a-zA-Z\s]/g, '');
+                            }
+                            // Strictly enforce maxLength
+                            if (props.maxLength && value.length > props.maxLength) {
+                                value = value.slice(0, props.maxLength);
+                            }
+                            e.target.value = value;
+                            props.onChange?.(e);
+                        }}
                     />
                     <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-1">
                         {rightElement && (

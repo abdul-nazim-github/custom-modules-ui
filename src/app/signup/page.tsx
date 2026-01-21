@@ -125,6 +125,9 @@ export default function SignUpPage() {
                                     hideErrorText={errors.name === 'Name is required'}
                                     disabled={isLoading}
                                     className="group-hover:bg-white"
+                                    restrictNumbers={true}
+                                    restrictSymbols={true}
+                                    maxLength={50}
                                 />
                             </div>
 
