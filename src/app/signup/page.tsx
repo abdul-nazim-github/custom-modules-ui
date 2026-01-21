@@ -3,6 +3,7 @@
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/error-utils';
 import { validateEmail, validatePassword, validateName, generatePassword } from '@/lib/validation';
 import { PasswordChecklist } from '@/components/password-checklist';
@@ -214,7 +215,14 @@ export default function SignUpPage() {
                         <div className="text-center">
                             <p className="text-sm text-gray-600 font-medium">
                                 Already have an account?{' '}
-                                <Link href="/signin" className="font-bold text-purple-600">
+                                <Link
+                                    href="/signin"
+                                    className={cn(
+                                        "font-bold text-purple-600 transition-colors hover:text-purple-700",
+                                        isLoading && "pointer-events-none opacity-50"
+                                    )}
+                                    tabIndex={isLoading ? -1 : undefined}
+                                >
                                     Sign in
                                 </Link>
                             </p>

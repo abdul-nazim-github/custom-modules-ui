@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 import { KeyRound, ArrowLeft } from 'lucide-react';
 import { validateEmail, validatePassword } from '@/lib/validation';
 import { ErrorBoundary } from '@/components/error-boundary';
@@ -65,7 +66,14 @@ export default function ForgotPasswordPage() {
                             We&apos;ve sent a password reset link to <span className="font-bold text-purple-600">{email}</span>.
                         </p>
                         <div className="mt-8">
-                            <Link href="/signin" className="inline-flex items-center text-sm font-bold text-purple-600 hover:text-pink-600 transition-colors group">
+                            <Link
+                                href="/signin"
+                                className={cn(
+                                    "inline-flex items-center text-sm font-bold text-purple-600 hover:text-pink-600 transition-colors group",
+                                    isLoading && "pointer-events-none opacity-50"
+                                )}
+                                tabIndex={isLoading ? -1 : undefined}
+                            >
                                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
                                 Back to Sign in
                             </Link>
@@ -130,7 +138,14 @@ export default function ForgotPasswordPage() {
                         </form>
 
                         <div className="text-center">
-                            <Link href="/signin" className="inline-flex items-center text-sm font-bold text-purple-600 group">
+                            <Link
+                                href="/signin"
+                                className={cn(
+                                    "inline-flex items-center text-sm font-bold text-purple-600 group",
+                                    isLoading && "pointer-events-none opacity-50"
+                                )}
+                                tabIndex={isLoading ? -1 : undefined}
+                            >
                                 <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
                                 Back to Sign in
                             </Link>
