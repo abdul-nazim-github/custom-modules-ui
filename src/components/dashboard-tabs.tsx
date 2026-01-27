@@ -5,6 +5,7 @@ import { User, Settings, Activity, Mail, Shield, Bell, Users, Trash2, Edit2, Use
 import api from '@/lib/axios';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { ContentManagement } from './content-management';
 import { validatePassword, generatePassword } from '@/lib/validation';
 import { PasswordChecklist } from './password-checklist';
 import { Input } from './ui/input';
@@ -56,6 +57,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'security', label: 'Security', icon: Shield, permission: Permission.SECURITY },
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
         { id: 'users', label: 'Users', icon: Users },
+        { id: 'content', label: 'Content', icon: FileText },
     ];
 
     const tabs = allTabs.filter((tab: { id: string; label: string; icon: LucideIcon; permission?: Permission; role?: Role }) => {
@@ -63,6 +65,9 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             return role === Role.SUPER_ADMIN ||
                 permissions.includes(Permission.MANAGE_USERS) ||
                 permissions.includes(Permission.MANAGE_PERMISSIONS);
+        }
+        if (tab.id === 'content') {
+            return role === Role.SUPER_ADMIN || role === Role.ADMIN;
         }
         return (tab.permission && permissions.includes(tab.permission)) ||
             (tab.role && role === tab.role);
@@ -768,6 +773,9 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                     </div>
                 )}
 
+                {activeTab === 'content' && (
+                    <ContentManagement />
+                )}
             </div>
 
             {/* Delete Confirmation Modal */}
