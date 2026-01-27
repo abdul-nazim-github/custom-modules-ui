@@ -1,10 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { User, Settings, Activity, Mail, Shield, Bell, Users, Plus, Trash2, Edit2, UserCheck, ChevronLeft, ChevronRight, LucideIcon } from 'lucide-react';
+import { User, Settings, Activity, Mail, Shield, Bell, Users, Trash2, Edit2, UserCheck, ChevronLeft, ChevronRight, LucideIcon, FileText, XCircle, Wand2 } from 'lucide-react';
 import api from '@/lib/axios';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { validatePassword, generatePassword } from '@/lib/validation';
+import { PasswordChecklist } from './password-checklist';
+import { Input } from './ui/input';
 
 export enum Role {
     ADMIN = 'admin',
@@ -18,7 +21,7 @@ export enum Permission {
     ACTIVITY = 'modules~permission~activity',
     SECURITY = 'modules~permission~security',
     MANAGE_USERS = 'modules~permission~manage_users',
-    MANAGE_PERMISSIONS = 'modules~permission~manage_permissions'
+    MANAGE_PERMISSIONS = 'modules~permission~manage_permissions',
 }
 
 const PERMISSION_LABELS: Record<Permission, string> = {
@@ -80,6 +83,15 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     const [currentPage, setCurrentPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [totalUsers, setTotalUsers] = useState(0);
+
+    // Password Update State
+    const [showPasswordForm, setShowPasswordForm] = useState(false);
+    const [passwordData, setPasswordData] = useState({
+        oldPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+    });
+    const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
     // Comparison logic for disabling buttons
     const currentUser = users.find(u => (u.id || u._id) === targetUserId);
@@ -257,6 +269,59 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         );
     };
 
+    const handlePasswordUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (!passwordData.oldPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+            toast.error('Please fill in all password fields');
+            return;
+        }
+
+        if (passwordData.newPassword !== passwordData.confirmPassword) {
+            toast.error('New passwords do not match');
+            return;
+        }
+
+        const passwordError = validatePassword(passwordData.newPassword);
+        if (passwordError) {
+            toast.error(passwordError);
+            return;
+        }
+
+        setIsUpdatingPassword(true);
+        const loadingToast = toast.loading('Updating password...');
+
+        try {
+            // Call the change-password endpoint which accesses httpOnly cookie
+            const response = await api.post('/api/password/change', {
+                newPassword: passwordData.newPassword
+            });
+
+            if (response.data.success) {
+                toast.success('Password updated successfully!', { id: loadingToast });
+                setShowPasswordForm(false);
+                setPasswordData({
+                    oldPassword: '',
+                    newPassword: '',
+                    confirmPassword: ''
+                });
+            } else {
+                toast.error(response.data.message || 'Failed to update password', { id: loadingToast });
+            }
+        } catch (error: unknown) {
+            console.error('Password update error:', error);
+            let message = 'Failed to update password';
+            if (axios.isAxiosError(error)) {
+                message = error.response?.data?.message || message;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+            toast.error(message, { id: loadingToast });
+        } finally {
+            setIsUpdatingPassword(false);
+        }
+    };
+
     const handleUserSelect = (userId: string) => {
         setTargetUserId(userId);
         const user = users.find(u => (u.id || u._id) === userId);
@@ -365,11 +430,15 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                 {activeTab === 'security' && (
                     <div className="p-8 transition-all duration-500 opacity-100 translate-y-0">
                         <h2 className="text-2xl font-bold text-gray-900 mb-6">Security Settings</h2>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="p-6 rounded-xl bg-gray-50 border border-gray-100">
                                 <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-4">Password</h3>
-                                <p className="text-gray-500 text-sm mb-4">Last changed 3 months ago</p>
-                                <button className="w-full py-2 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                                <p className="text-gray-500 text-sm mb-4">Keep your account secure with a strong password</p>
+                                <button
+                                    onClick={() => setShowPasswordForm(true)}
+                                    className="w-full py-2 px-4 bg-white border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+                                >
                                     Update Password
                                 </button>
                             </div>
@@ -698,6 +767,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                         </div>
                     </div>
                 )}
+
             </div>
 
             {/* Delete Confirmation Modal */}
@@ -736,6 +806,175 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                 <span>{isDeleting ? 'Deleting...' : 'Delete User'}</span>
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Password Update Modal */}
+            {showPasswordForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-gray-900">Update Password</h3>
+                            <button
+                                onClick={() => {
+                                    setShowPasswordForm(false);
+                                    setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={handlePasswordUpdate}>
+                            <div className="p-6 space-y-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-gray-700">Current Password</label>
+                                    <input
+                                        type="password"
+                                        value={passwordData.oldPassword}
+                                        onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
+                                        placeholder="Enter your current password"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900"
+                                        disabled={isUpdatingPassword}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-gray-700">New Password</label>
+                                    <input
+                                        type="password"
+                                        value={passwordData.newPassword}
+                                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                        placeholder="Enter your new password"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900"
+                                        disabled={isUpdatingPassword}
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Password must be at least 8 characters with uppercase, lowercase, number, and special character
+                                    </p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-gray-700">Confirm New Password</label>
+                                    <input
+                                        type="password"
+                                        value={passwordData.confirmPassword}
+                                        onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                        placeholder="Confirm your new password"
+                                        className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all text-gray-900"
+                                        disabled={isUpdatingPassword}
+                                    />
+                                </div>
+                            </div>
+                            <div className="p-6 bg-gray-50 flex justify-end space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowPasswordForm(false);
+                                        setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+                                    }}
+                                    className="px-6 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-200 rounded-xl transition-colors"
+                                    disabled={isUpdatingPassword}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isUpdatingPassword}
+                                    className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 flex items-center space-x-2"
+                                >
+                                    {isUpdatingPassword && <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                                    <span>{isUpdatingPassword ? 'Updating...' : 'Update Password'}</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+            {/* Update Password Modal */}
+            {showPasswordForm && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                            <h3 className="text-xl font-bold text-gray-900">Update Password</h3>
+                            <button
+                                onClick={() => {
+                                    setShowPasswordForm(false);
+                                    setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+                                }}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+                        <form onSubmit={handlePasswordUpdate}>
+                            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                                <Input
+                                    label="Current Password"
+                                    type="password"
+                                    value={passwordData.oldPassword}
+                                    onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
+                                    placeholder="Enter your current password"
+                                    disabled={isUpdatingPassword}
+                                />
+
+                                <div className="space-y-2">
+                                    <Input
+                                        label="New Password"
+                                        type="password"
+                                        value={passwordData.newPassword}
+                                        onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                                        placeholder="Enter your new password"
+                                        disabled={isUpdatingPassword}
+                                        rightElement={
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const newPass = generatePassword();
+                                                    setPasswordData(prev => ({ ...prev, newPassword: newPass, confirmPassword: newPass }));
+                                                }}
+                                                className="p-1.5 text-gray-400 hover:text-indigo-600 transition-colors focus:outline-none"
+                                                title="Generate strong password"
+                                            >
+                                                <Wand2 size={18} />
+                                            </button>
+                                        }
+                                    />
+                                    <PasswordChecklist password={passwordData.newPassword} />
+                                </div>
+
+                                <Input
+                                    label="Confirm New Password"
+                                    type="password"
+                                    value={passwordData.confirmPassword}
+                                    onChange={(e) => setPasswordData({ ...passwordData, confirmPassword: e.target.value })}
+                                    placeholder="Confirm your new password"
+                                    disabled={isUpdatingPassword}
+                                />
+                            </div>
+                            <div className="p-6 bg-gray-50 flex justify-end space-x-3">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowPasswordForm(false);
+                                        setPasswordData({ oldPassword: '', newPassword: '', confirmPassword: '' });
+                                    }}
+                                    className="px-6 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-200 rounded-xl transition-colors"
+                                    disabled={isUpdatingPassword}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isUpdatingPassword}
+                                    className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 flex items-center justify-center space-x-2"
+                                >
+                                    {isUpdatingPassword && <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                                    <span>{isUpdatingPassword ? 'Updating...' : 'Update Password'}</span>
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
