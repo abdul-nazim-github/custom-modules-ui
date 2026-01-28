@@ -54,10 +54,10 @@ export function ContentManagement() {
         fetchContent();
     }, [currentPage, limit]);
 
-    const fetchContent = async (page = currentPage, currentLimit = limit) => {
+    const fetchContent = async (page = currentPage, currentLimit = limit, search = searchTerm) => {
         setIsLoading(true);
         try {
-            const response = await api.get(`/api/content/list?page=${page}&limit=${currentLimit}`);
+            const response = await api.get(`/api/content/list?page=${page}&limit=${currentLimit}&search=${encodeURIComponent(search)}`);
             if (response.data.success) {
                 setContentList(response.data.data);
                 setTotalItems(response.data.meta?.totalCount || response.data.data.length);
