@@ -67,7 +67,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                 permissions.includes(Permission.MANAGE_PERMISSIONS);
         }
         if (tab.id === 'content') {
-            return role === Role.SUPER_ADMIN || role === Role.ADMIN;
+            return true; // Content tab is now visible to all users
         }
         return (tab.permission && permissions.includes(tab.permission)) ||
             (tab.role && role === tab.role);
@@ -339,7 +339,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     return (
         <div className="space-y-6">
             {/* Tab Navigation */}
-            <div className="flex space-x-1 bg-white p-1 rounded-xl shadow-sm border border-gray-100 max-w-xl overflow-x-auto">
+            <div className="flex space-x-1 bg-white p-1 rounded-xl shadow-sm border border-gray-100 max-w-4xl overflow-x-auto">
                 {tabs.map((tab) => {
                     const Icon = tab.icon;
                     return (

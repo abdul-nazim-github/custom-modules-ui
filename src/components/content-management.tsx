@@ -152,8 +152,8 @@ export function ContentManagement() {
     };
 
     return (
-        <div className="p-8 space-y-8">
-            <div className="flex justify-between items-center">
+        <div className="p-8 transition-all duration-500 opacity-100 translate-y-0">
+            <div className="flex justify-between items-center mb-8">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-900">Content Management</h2>
                     <p className="text-gray-500 mt-1">Manage your application&apos;s content modules and pages.</p>
@@ -168,7 +168,7 @@ export function ContentManagement() {
             </div>
 
             {/* Filters and Search */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-8">
                 <form onSubmit={handleSearch} className="relative flex-1 max-w-md">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                     <input
@@ -207,7 +207,7 @@ export function ContentManagement() {
 
             {/* Content Table */}
             <div className="overflow-hidden rounded-2xl border border-gray-100 shadow-sm bg-white">
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto min-h-[580px]">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
@@ -312,23 +312,62 @@ export function ContentManagement() {
                 {/* Pagination */}
                 {!isLoading && contentList.length > 0 && (
                     <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                        <div className="text-sm text-gray-700">
-                            Showing <span className="font-bold">{(currentPage - 1) * limit + 1}</span> to <span className="font-bold">{Math.min(currentPage * limit, totalItems)}</span> of <span className="font-bold">{totalItems}</span> results
+                        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                            <div>
+                                <p className="text-sm text-gray-700">
+                                    Showing <span className="font-bold">{(currentPage - 1) * limit + 1}</span> to <span className="font-bold">{Math.min(currentPage * limit, totalItems)}</span> of{' '}
+                                    <span className="font-bold">{totalItems}</span> results
+                                </p>
+                            </div>
+                            <div>
+                                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                    <button
+                                        onClick={() => fetchContent(currentPage - 1)}
+                                        disabled={currentPage === 1 || isLoading}
+                                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <span className="sr-only">Previous</span>
+                                        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                                    </button>
+                                    {Array.from({ length: Math.max(1, Math.ceil(totalItems / limit)) }).map((_, i) => (
+                                        <button
+                                            key={i}
+                                            onClick={() => fetchContent(i + 1)}
+                                            disabled={currentPage === i + 1 || isLoading}
+                                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${currentPage === i + 1
+                                                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50'
+                                                }`}
+                                        >
+                                            {i + 1}
+                                        </button>
+                                    ))}
+                                    <button
+                                        onClick={() => fetchContent(currentPage + 1)}
+                                        disabled={currentPage * limit >= totalItems || isLoading}
+                                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <span className="sr-only">Next</span>
+                                        <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                                    </button>
+                                </nav>
+                            </div>
                         </div>
-                        <div className="flex space-x-2">
+                        {/* Mobile view navigation */}
+                        <div className="flex-1 flex justify-between sm:hidden">
                             <button
-                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                                disabled={currentPage === 1}
-                                className="p-2 rounded-lg border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                onClick={() => fetchContent(currentPage - 1)}
+                                disabled={currentPage === 1 || isLoading}
+                                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <ChevronLeft size={20} />
+                                Previous
                             </button>
                             <button
-                                onClick={() => setCurrentPage(prev => prev + 1)}
-                                disabled={currentPage * limit >= totalItems}
-                                className="p-2 rounded-lg border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                onClick={() => fetchContent(currentPage + 1)}
+                                disabled={currentPage * limit >= totalItems || isLoading}
+                                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                <ChevronRight size={20} />
+                                Next
                             </button>
                         </div>
                     </div>
