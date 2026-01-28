@@ -5,6 +5,7 @@ import { User, Settings, Activity, Mail, Shield, Bell, Users, Trash2, Edit2, Use
 import api from '@/lib/axios';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { PermissionsMatrix } from './permissions-matrix';
 import { ContentManagement } from './content-management';
 import { validatePassword, generatePassword } from '@/lib/validation';
 import { PasswordChecklist } from './password-checklist';
@@ -23,6 +24,11 @@ export enum Permission {
     SECURITY = 'modules~permission~security',
     MANAGE_USERS = 'modules~permission~manage_users',
     MANAGE_PERMISSIONS = 'modules~permission~manage_permissions',
+    // Content Permissions
+    CONTENT_VIEW = 'modules~permission~content',
+    CONTENT_CREATE = 'modules~permission~content_create',
+    CONTENT_EDIT = 'modules~permission~content_edit',
+    CONTENT_DELETE = 'modules~permission~content_delete',
 }
 
 const PERMISSION_LABELS: Record<Permission, string> = {
@@ -32,6 +38,10 @@ const PERMISSION_LABELS: Record<Permission, string> = {
     [Permission.SECURITY]: 'Security',
     [Permission.MANAGE_USERS]: 'Manage Users',
     [Permission.MANAGE_PERMISSIONS]: 'Manage Permissions',
+    [Permission.CONTENT_VIEW]: 'View Content',
+    [Permission.CONTENT_CREATE]: 'Create Content',
+    [Permission.CONTENT_EDIT]: 'Edit Content',
+    [Permission.CONTENT_DELETE]: 'Delete Content',
 };
 
 interface UserData {
@@ -57,6 +67,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'security', label: 'Security', icon: Shield, permission: Permission.SECURITY },
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
         { id: 'users', label: 'Users', icon: Users },
+        { id: 'permissions', label: 'Permissions', icon: Shield },
         { id: 'content', label: 'Content', icon: FileText },
     ];
 
@@ -66,8 +77,14 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                 permissions.includes(Permission.MANAGE_USERS) ||
                 permissions.includes(Permission.MANAGE_PERMISSIONS);
         }
+        if (tab.id === 'permissions') {
+            return role === Role.SUPER_ADMIN ||
+                permissions.includes(Permission.MANAGE_PERMISSIONS);
+        }
         if (tab.id === 'content') {
-            return true; // Content tab is now visible to all users
+            // Check for explicit content view permission
+            // Also allow if user is super_admin (fallback)
+            return permissions.includes(Permission.CONTENT_VIEW) || role === Role.SUPER_ADMIN;
         }
         return (tab.permission && permissions.includes(tab.permission)) ||
             (tab.role && role === tab.role);
@@ -771,6 +788,10 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                             </div>
                         </div>
                     </div>
+                )}
+
+                {activeTab === 'permissions' && (
+                    <PermissionsMatrix />
                 )}
 
                 {activeTab === 'content' && (
