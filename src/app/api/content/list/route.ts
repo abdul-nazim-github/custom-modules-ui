@@ -6,6 +6,7 @@ import { getErrorMessage } from '@/lib/error-utils';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const search = searchParams.get('search') || '';
     const page = searchParams.get('page') || '1';
     const limit = searchParams.get('limit') || '10';
 
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
 
     try {
       const response = await axios.get(`${backendUrl}/content/list`, {
-        params: { page, limit },
+        params: { page, limit, search },
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
