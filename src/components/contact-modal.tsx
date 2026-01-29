@@ -28,7 +28,14 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!formData.name || !formData.email || !formData.subject || !formData.message) {
+        const trimmedData = {
+            name: formData.name.trim(),
+            email: formData.email.trim(),
+            subject: formData.subject.trim(),
+            message: formData.message.trim()
+        };
+
+        if (!trimmedData.name || !trimmedData.email || !trimmedData.subject || !trimmedData.message) {
             toast.error('Please fill in all fields');
             return;
         }
@@ -37,7 +44,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
         const loadingToast = toast.loading('Sending message...');
 
         try {
-            const response = await axios.post('/api/contact/submit', formData);
+            const response = await axios.post('/api/contact/submit', trimmedData);
 
             toast.success(response.data.message || 'Message sent successfully!', { id: loadingToast });
             setFormData({ name: '', email: '', subject: '', message: '' });
@@ -59,9 +66,9 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                     <div>
                         <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                             <Mail className="text-indigo-600" size={20} />
-                            Contact Us
+                            Drop us your query
                         </h3>
-                        <p className="text-sm text-gray-500 mt-1">We'd love to hear from you!</p>
+                        <p className="text-sm text-gray-500 mt-1">We&apos;d love to hear from you!</p>
                     </div>
                     <button
                         onClick={onClose}

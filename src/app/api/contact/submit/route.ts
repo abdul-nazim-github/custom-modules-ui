@@ -3,7 +3,10 @@ import { NextResponse } from 'next/server';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { name, email, subject, message } = body;
+        const name = body.name?.trim();
+        const email = body.email?.trim();
+        const subject = body.subject?.trim();
+        const message = body.message?.trim();
 
         // Basic validation
         if (!name || !email || !subject || !message) {
@@ -12,6 +15,8 @@ export async function POST(request: Request) {
                 { status: 400 }
             );
         }
+
+        const trimmedBody = { name, email, subject, message };
         // Forward to backend
         const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
         const response = await fetch(`${backendUrl}/contact/submit`, {
@@ -19,7 +24,7 @@ export async function POST(request: Request) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(body),
+            body: JSON.stringify(trimmedBody),
         });
         console.log("Path - ", `${backendUrl}/contact/submit`);
 

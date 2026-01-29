@@ -53,7 +53,7 @@ export default function SignUpPage() {
         if (!trimmedData.confirmPassword) {
             newErrors.confirmPassword = 'Please confirm your password';
         } else if (trimmedData.password !== trimmedData.confirmPassword) {
-            newErrors.confirmPassword = 'Passwords do not match';
+            newErrors.confirmPassword = 'Password and confirm password do not match';
         }
 
         setErrors(newErrors);
