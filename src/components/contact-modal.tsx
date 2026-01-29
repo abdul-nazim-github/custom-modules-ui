@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Send, Loader2, Mail, User, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +22,17 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
         message: ''
     });
     const [isLoading, setIsLoading] = useState(false);
+
+    useEffect(() => {
+        if (!isOpen) {
+            setFormData({
+                name: '',
+                email: '',
+                subject: '',
+                message: ''
+            });
+        }
+    }, [isOpen]);
 
     if (!isOpen) return null;
 

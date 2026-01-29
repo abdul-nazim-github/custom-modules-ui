@@ -198,13 +198,13 @@ export default function SignInPage() {
                                     <span className="w-full border-t border-gray-200" />
                                 </div>
                                 <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-white px-2 text-gray-500 font-medium">Need help?</span>
+                                    <span className="px-2 text-gray-500 font-medium">Need help?</span>
                                 </div>
                             </div>
 
                             <button
                                 onClick={() => setShowContactModal(true)}
-                                className="text-sm font-semibold text-gray-500 hover:text-indigo-600 transition-colors flex items-center justify-center gap-2 mx-auto cursor-pointer"
+                                className="text-sm font-bold text-purple-600 hover:text-purple-700 transition-colors flex items-center justify-center gap-2 mx-auto cursor-pointer"
                             >
                                 Contact Support
                             </button>
