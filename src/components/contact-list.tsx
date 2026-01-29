@@ -293,11 +293,11 @@ export function ContactList() {
                                     </div>
 
                                     <div className="space-y-1">
-                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Submitted At</label>
+                                        <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Submitted On</label>
                                         <p className="text-sm text-gray-600">
                                             {(() => {
                                                 const date = contactToView.createdAt || contactToView.created_at;
-                                                return date ? new Date(date).toLocaleString() : 'N/A';
+                                                return date ? new Date(date).toLocaleDateString() : 'N/A';
                                             })()}
                                         </p>
                                     </div>
