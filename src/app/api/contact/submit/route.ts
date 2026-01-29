@@ -22,6 +22,7 @@ export async function POST(request: Request) {
             },
             body: JSON.stringify(body),
         });
+        console.log("Path - ", `${backendUrl}/contact/submit`);
 
         const data = await response.json();
 
