@@ -92,6 +92,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                 disabled={isLoading}
+                                maxLength={50}
                                 className="bg-gray-50 border-gray-200 focus:bg-white transition-colors text-black"
                             />
                         </div>
@@ -123,6 +124,7 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                                 value={formData.subject}
                                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
                                 disabled={isLoading}
+                                maxLength={200}
                                 className="bg-gray-50 border-gray-200 focus:bg-white transition-colors text-black"
                             />
                         </div>
