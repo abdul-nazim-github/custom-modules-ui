@@ -19,7 +19,7 @@ export function middleware(request: NextRequest) {
   if (!token && !isPublicRoute) {
       // Allow access to API routes (except auth ones if needed, but usually API is protected differently or by this same middleware)
       // We should probably exclude /api/auth from this check or handle it specifically
-      if (pathname.startsWith('/api/auth')) {
+      if (pathname.startsWith('/api/auth') || pathname.startsWith('/api/contact')) {
           return NextResponse.next();
       }
 

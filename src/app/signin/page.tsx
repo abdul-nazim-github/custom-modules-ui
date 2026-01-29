@@ -15,6 +15,8 @@ import { getErrorMessage } from '@/lib/error-utils';
 
 import toast from 'react-hot-toast';
 
+import { ContactModal } from '@/components/contact-modal';
+
 export default function SignInPage() {
     const router = useRouter();
     const [formData, setFormData] = useState({
@@ -23,6 +25,7 @@ export default function SignInPage() {
     });
     const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
     const [isLoading, setIsLoading] = useState(false);
+    const [showContactModal, setShowContactModal] = useState(false);
 
     const validate = () => {
         const trimmedEmail = formData.email.trim();
@@ -175,7 +178,7 @@ export default function SignInPage() {
                             </Button>
                         </form>
 
-                        <div className="mt-8 text-center">
+                        <div className="mt-8 text-center space-y-4">
                             <p className="text-sm text-gray-600 font-medium">
                                 Don&apos;t have an account?{' '}
                                 <Link
@@ -189,10 +192,31 @@ export default function SignInPage() {
                                     Sign up
                                 </Link>
                             </p>
+
+                            <div className="relative">
+                                <div className="absolute inset-0 flex items-center">
+                                    <span className="w-full border-t border-gray-200" />
+                                </div>
+                                <div className="relative flex justify-center text-xs uppercase">
+                                    <span className="bg-white px-2 text-gray-500 font-medium">Need help?</span>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setShowContactModal(true)}
+                                className="text-sm font-semibold text-gray-500 hover:text-indigo-600 transition-colors flex items-center justify-center gap-2 mx-auto cursor-pointer"
+                            >
+                                Contact Support
+                            </button>
                         </div>
                     </div>
                 </ErrorBoundary>
             </div>
+
+            <ContactModal
+                isOpen={showContactModal}
+                onClose={() => setShowContactModal(false)}
+            />
         </div>
     );
 }
