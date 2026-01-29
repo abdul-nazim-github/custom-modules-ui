@@ -77,9 +77,10 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
                                 <User size={16} className="text-gray-400" />
-                                Your Name
+                                Your Name <span className="text-red-500">*</span>
                             </label>
                             <Input
+                                required
                                 placeholder="John Doe"
                                 value={formData.name}
                                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -91,9 +92,10 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
                                 <Mail size={16} className="text-gray-400" />
-                                Email Address
+                                Email Address <span className="text-red-500">*</span>
                             </label>
                             <Input
+                                required
                                 type="email"
                                 placeholder="john@example.com"
                                 value={formData.email}
@@ -106,9 +108,10 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
                                 <MessageSquare size={16} className="text-gray-400" />
-                                Subject
+                                Subject <span className="text-red-500">*</span>
                             </label>
                             <Input
+                                required
                                 placeholder="Inquiry"
                                 value={formData.subject}
                                 onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
@@ -120,9 +123,10 @@ export function ContactModal({ isOpen, onClose }: ContactModalProps) {
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
                                 <MessageSquare size={16} className="text-gray-400" />
-                                Message
+                                Message <span className="text-red-500">*</span>
                             </label>
                             <textarea
+                                required
                                 value={formData.message}
                                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                                 placeholder="How can we help you?"
