@@ -6,11 +6,11 @@ import { getErrorMessage } from '@/lib/error-utils';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { newPassword } = body;
+    const { oldPassword, newPassword } = body;
 
-    if (!newPassword) {
+    if (!oldPassword || !newPassword) {
       return NextResponse.json(
-        { message: 'New password is required', success: false },
+        { message: 'Old password and new password are required', success: false },
         { status: 400 }
       );
     }
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     try {
       const response = await axios.post(
         `${backendUrl}/password/change`,
-        { newPassword },
+        { oldPassword, newPassword },
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`

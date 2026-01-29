@@ -299,6 +299,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         try {
             // Call the change-password endpoint which accesses httpOnly cookie
             const response = await api.post('/api/password/change', {
+                oldPassword: passwordData.oldPassword,
                 newPassword: passwordData.newPassword
             });
 
