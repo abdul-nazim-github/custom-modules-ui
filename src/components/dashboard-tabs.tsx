@@ -287,7 +287,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         }
 
         if (passwordData.newPassword !== passwordData.confirmPassword) {
-            toast.error('New passwords do not match');
+            toast.error('New password and confirm password do not match');
             return;
         }
 

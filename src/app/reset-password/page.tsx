@@ -83,7 +83,7 @@ function ResetPasswordForm({
         if (!trimmedConfirm) {
             newErrors.confirmPassword = 'Please confirm your password';
         } else if (trimmedPassword !== trimmedConfirm) {
-            newErrors.confirmPassword = 'Passwords do not match';
+            newErrors.confirmPassword = 'New password and confirm password do not match';
         }
 
         setErrors(newErrors);
