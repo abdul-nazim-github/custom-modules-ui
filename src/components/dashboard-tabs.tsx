@@ -6,6 +6,7 @@ import api from '@/lib/axios';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { PermissionsMatrix } from './permissions-matrix';
+import { PermissionsManagement } from './permissions-management';
 import { ContentManagement } from './content-management';
 import { validatePassword, generatePassword } from '@/lib/validation';
 import { PasswordChecklist } from './password-checklist';
@@ -69,7 +70,8 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'security', label: 'Security', icon: Shield, permission: Permission.SECURITY },
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
         { id: 'users', label: 'Users', icon: Users },
-        { id: 'permissions', label: 'Permissions', icon: Shield },
+        { id: 'permissions', label: 'Permissions Matrix', icon: Shield },
+        { id: 'permissions-mgmt', label: 'Permissions Management', icon: Shield },
         { id: 'content', label: 'Content', icon: FileText },
         { id: 'contact', label: 'Contact Request Entries', icon: Mail, permission: Permission.CONTACT_FORM },
     ];
@@ -80,7 +82,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                 permissions.includes(Permission.MANAGE_USERS) ||
                 permissions.includes(Permission.MANAGE_PERMISSIONS);
         }
-        if (tab.id === 'permissions') {
+        if (tab.id === 'permissions' || tab.id === 'permissions-mgmt') {
             return role === Role.SUPER_ADMIN ||
                 permissions.includes(Permission.MANAGE_PERMISSIONS);
         }
@@ -796,6 +798,10 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
 
                 {activeTab === 'permissions' && (
                     <PermissionsMatrix />
+                )}
+
+                {activeTab === 'permissions-mgmt' && (
+                    <PermissionsManagement />
                 )}
 
                 {activeTab === 'content' && (
