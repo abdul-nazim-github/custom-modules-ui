@@ -55,19 +55,36 @@ export function ContentManagement() {
     }, [currentPage, limit]);
 
     const fetchContent = async (page = currentPage, currentLimit = limit, search = searchTerm) => {
+        // Cancel previous request if it exists
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
+        // Create new AbortController
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         setIsLoading(true);
         try {
-            const response = await api.get(`/api/content/list?page=${page}&limit=${currentLimit}&search=${encodeURIComponent(search)}`);
+            const response = await api.get(`/api/content/list?page=${page}&limit=${currentLimit}&search=${encodeURIComponent(search)}`, {
+                signal: controller.signal
+            });
             if (response.data.success) {
                 setContentList(response.data.data);
                 setTotalItems(response.data.meta?.totalCount || response.data.data.length);
                 setCurrentPage(page);
             }
         } catch (error) {
+            if (axios.isCancel(error)) {
+                console.log('Request canceled');
+                return;
+            }
             console.error('Fetch content error:', error);
             toast.error('Failed to fetch content modules');
         } finally {
-            setIsLoading(false);
+            if (!controller.signal.aborted) {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -242,7 +259,19 @@ export function ContentManagement() {
                                 contentList.map((content) => (
                                     <tr key={content.id || content._id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4">
-                                            <div className="text-sm font-bold text-gray-900">{content.title}</div>
+                                            <div className="group relative">
+                                                <div className="text-sm font-bold text-gray-900 max-w-[200px] truncate">
+                                                    {content.title}
+                                                </div>
+                                                {content.title && content.title.length > 20 && (
+                                                    <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50">
+                                                        <div className="bg-gray-900 text-white text-xs rounded-lg p-2 shadow-xl max-w-xs whitespace-normal">
+                                                            {content.title}
+                                                            <div className="absolute top-full left-4 -mt-1 border-4 border-transparent border-t-gray-900"></div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="group relative">
