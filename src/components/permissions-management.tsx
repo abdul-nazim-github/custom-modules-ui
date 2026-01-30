@@ -9,12 +9,14 @@ import { hasPermission, getPermissionLabel, groupPermissionsByModule } from '@/l
 
 interface PermissionData {
     _id: string;
-    userId: string;
+    userId?: string;
     user?: {
-        _id: string;
-        name: string;
-        Email: string;
-    };
+        id?: string;
+        _id?: string;
+        name?: string;
+        email?: string;
+        Email?: string;
+    } | null;
     permissions: string[];
     created_at: string;
     updated_at: string;
@@ -127,10 +129,18 @@ export function PermissionsManagement() {
 
     const getUserName = (permission: PermissionData) => {
         if (permission.user) {
-            return `${permission.user.name} (${permission.user.Email})`;
+            const userName = permission.user.name || 'Unknown User';
+            const userEmail = permission.user.email || permission.user.Email || 'No Email';
+            return `${userName} (${userEmail})`;
         }
-        const user = users.find(u => (u.id || u._id) === permission.userId);
-        return user ? `${user.name} (${user.email})` : permission.userId;
+
+        const effectiveUserId = permission.userId || (permission as any).user_id;
+        if (effectiveUserId) {
+            const user = users.find(u => (u.id || u._id) === effectiveUserId);
+            return user ? `${user.name} (${user.email})` : `User ID: ${effectiveUserId}`;
+        }
+
+        return 'Not Assigned';
     };
 
     const handleOpenCreateModal = () => {
@@ -145,7 +155,9 @@ export function PermissionsManagement() {
 
     const handleOpenEditModal = (permission: PermissionData) => {
         setIsEditing(true);
-        setCurrentPermission({ ...permission });
+        // Ensure userId is present for the select in the modal
+        const userId = permission.userId || permission.user?.id || permission.user?._id || '';
+        setCurrentPermission({ ...permission, userId });
         if (users.length === 0) fetchUsers();
         setShowModal(true);
     };
