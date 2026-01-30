@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, Activity, FileText, CheckCircle2, XCircle, Eye } from 'lucide-react';
+import { PortalTooltip } from '@/components/ui/portal-tooltip';
 import api from '@/lib/axios';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -259,34 +260,30 @@ export function ContentManagement() {
                                 contentList.map((content) => (
                                     <tr key={content.id || content._id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4">
-                                            <div className="group relative">
+                                            {content.title && content.title.length > 20 ? (
+                                                <PortalTooltip content={content.title}>
+                                                    <div className="text-sm font-bold text-gray-900 max-w-[200px] truncate">
+                                                        {content.title}
+                                                    </div>
+                                                </PortalTooltip>
+                                            ) : (
                                                 <div className="text-sm font-bold text-gray-900 max-w-[200px] truncate">
                                                     {content.title}
                                                 </div>
-                                                {content.title && content.title.length > 20 && (
-                                                    <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50">
-                                                        <div className="bg-gray-900 text-white text-xs rounded-lg p-2 shadow-xl max-w-xs whitespace-normal">
-                                                            {content.title}
-                                                            <div className="absolute top-full left-4 -mt-1 border-4 border-transparent border-t-gray-900"></div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="group relative">
+                                            {(content.shortDescription || content.description) && (content.shortDescription || content.description)!.length > 40 ? (
+                                                <PortalTooltip content={content.shortDescription || content.description}>
+                                                    <div className="text-sm text-gray-500 max-w-xs truncate">
+                                                        {content.shortDescription || content.description}
+                                                    </div>
+                                                </PortalTooltip>
+                                            ) : (
                                                 <div className="text-sm text-gray-500 max-w-xs truncate">
                                                     {content.shortDescription || content.description}
                                                 </div>
-                                                {(content.shortDescription || content.description) && (content.shortDescription || content.description)!.length > 40 && (
-                                                    <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50">
-                                                        <div className="bg-gray-900 text-white text-xs rounded-lg p-2 shadow-xl max-w-xs whitespace-normal">
-                                                            {content.shortDescription || content.description}
-                                                            <div className="absolute top-full left-4 -mt-1 border-4 border-transparent border-t-gray-900"></div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${content.status === 1

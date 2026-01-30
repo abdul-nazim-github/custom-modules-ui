@@ -71,7 +71,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'users', label: 'Users', icon: Users },
         { id: 'permissions', label: 'Permissions', icon: Shield },
         { id: 'content', label: 'Content', icon: FileText },
-        { id: 'contact', label: 'Contact Form', icon: Mail, permission: Permission.CONTACT_FORM },
+        { id: 'contact', label: 'Contact Request Entries', icon: Mail, permission: Permission.CONTACT_FORM },
     ];
 
     const tabs = allTabs.filter((tab: { id: string; label: string; icon: LucideIcon; permission?: Permission; role?: Role }) => {
@@ -360,19 +360,19 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     return (
         <div className="space-y-6">
             {/* Tab Navigation */}
-            <div className="flex space-x-1 bg-white p-1 rounded-xl shadow-sm border border-gray-100 max-w-4xl overflow-x-auto">
+            <div className="flex space-x-1 bg-white p-1 rounded-xl shadow-sm border border-gray-100 w-full overflow-x-auto">
                 {tabs.map((tab) => {
                     const Icon = tab.icon;
                     return (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center justify-center space-x-2 min-w-[100px] flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === tab.id
+                            className={`flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${activeTab === tab.id
                                 ? 'bg-indigo-600 text-white shadow-md'
                                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
-                            <Icon size={18} />
+                            <Icon size={18} className="shrink-0" />
                             <span>{tab.label}</span>
                         </button>
                     );
