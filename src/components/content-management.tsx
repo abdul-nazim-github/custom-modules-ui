@@ -346,35 +346,51 @@ export function ContentManagement() {
                                 </p>
                             </div>
                             <div>
-                                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                <nav className="relative z-0 inline-flex rounded-xl shadow-sm -space-x-px bg-white border border-gray-200 p-1" aria-label="Pagination">
                                     <button
                                         onClick={() => fetchContent(currentPage - 1)}
                                         disabled={currentPage === 1 || isLoading}
-                                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                     >
-                                        <span className="sr-only">Previous</span>
-                                        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                                        <ChevronLeft className="h-4 w-4" />
                                     </button>
-                                    {Array.from({ length: Math.max(1, Math.ceil(totalItems / limit)) }).map((_, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => fetchContent(i + 1)}
-                                            disabled={currentPage === i + 1 || isLoading}
-                                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${currentPage === i + 1
-                                                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50'
-                                                }`}
-                                        >
-                                            {i + 1}
-                                        </button>
-                                    ))}
+
+                                    {(() => {
+                                        const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+                                        const delta = 1;
+                                        const range = [];
+                                        for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+                                            range.push(i);
+                                        }
+
+                                        if (currentPage - delta > 2) range.unshift('...');
+                                        range.unshift(1);
+                                        if (currentPage + delta < totalPages - 1) range.push('...');
+                                        if (totalPages > 1) range.push(totalPages);
+
+                                        return range.map((page, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => typeof page === 'number' ? fetchContent(page) : null}
+                                                disabled={currentPage === page || typeof page !== 'number' || isLoading}
+                                                className={`relative inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentPage === page
+                                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                                    : page === '...'
+                                                        ? 'text-gray-400 cursor-default'
+                                                        : 'text-gray-500 hover:bg-gray-50 hover:text-indigo-600'
+                                                    }`}
+                                            >
+                                                {page}
+                                            </button>
+                                        ));
+                                    })()}
+
                                     <button
                                         onClick={() => fetchContent(currentPage + 1)}
                                         disabled={currentPage * limit >= totalItems || isLoading}
-                                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                     >
-                                        <span className="sr-only">Next</span>
-                                        <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                                        <ChevronRight className="h-4 w-4" />
                                     </button>
                                 </nav>
                             </div>

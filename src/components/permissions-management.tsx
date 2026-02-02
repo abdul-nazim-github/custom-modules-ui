@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, Activity, Shield, CheckCircle2, XCircle, Eye, User } from 'lucide-react';
 import api from '@/lib/axios';
 import axios from 'axios';
+import { Activity, ChevronLeft, ChevronRight, Edit2, Eye, Plus, Search, Shield, User, XCircle } from 'lucide-react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
-import { hasPermission, getPermissionLabel, groupPermissionsByModule } from '@/lib/permission-utils';
 
 interface PermissionData {
     _id: string;
     userId?: string;
+    user_id?: string;
     user?: {
         id?: string;
         _id?: string;
@@ -54,24 +54,12 @@ export function PermissionsManagement() {
     });
     const [isSaving, setIsSaving] = useState(false);
 
-    // Delete Modal State
-    const [showDeleteModal, setShowDeleteModal] = useState(false);
-    const [permissionToDelete, setPermissionToDelete] = useState<PermissionData | null>(null);
-    const [isDeleting, setIsDeleting] = useState(false);
-
-    // View Modal State
     const [showViewModal, setShowViewModal] = useState(false);
     const [permissionToView, setPermissionToView] = useState<PermissionData | null>(null);
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    useEffect(() => {
-        fetchPermissions();
-        // fetchUsers(); // Only fetch users when needed for modal
-        fetchMatrix();
-    }, [currentPage, limit]);
-
-    const fetchPermissions = async (page = currentPage, currentLimit = limit) => {
+    const fetchPermissions = useCallback(async (page = currentPage, currentLimit = limit) => {
         // Cancel previous request if it exists
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -103,9 +91,9 @@ export function PermissionsManagement() {
                 setIsLoading(false);
             }
         }
-    };
+    }, [currentPage, limit]);
 
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         try {
             const response = await api.get('/api/auth/users?limit=1000');
             if (response.data.success) {
@@ -114,9 +102,9 @@ export function PermissionsManagement() {
         } catch (error) {
             console.error('Fetch users error:', error);
         }
-    };
+    }, []);
 
-    const fetchMatrix = async () => {
+    const fetchMatrix = useCallback(async () => {
         try {
             const response = await api.get('/api/permissions/matrix');
             if (response.data.success) {
@@ -125,7 +113,13 @@ export function PermissionsManagement() {
         } catch (error) {
             console.error('Fetch matrix error:', error);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchPermissions();
+        // fetchUsers(); // Only fetch users when needed for modal
+        fetchMatrix();
+    }, [fetchPermissions, fetchMatrix]);
 
     const getUserName = (permission: PermissionData) => {
         if (permission.user) {
@@ -134,7 +128,7 @@ export function PermissionsManagement() {
             return `${userName} (${userEmail})`;
         }
 
-        const effectiveUserId = permission.userId || (permission as any).user_id;
+        const effectiveUserId = permission.userId || permission.user_id;
         if (effectiveUserId) {
             const user = users.find(u => (u.id || u._id) === effectiveUserId);
             return user ? `${user.name} (${user.email})` : `User ID: ${effectiveUserId}`;
@@ -398,35 +392,51 @@ export function PermissionsManagement() {
                                 </p>
                             </div>
                             <div>
-                                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                <nav className="relative z-0 inline-flex rounded-xl shadow-sm -space-x-px bg-white border border-gray-200 p-1" aria-label="Pagination">
                                     <button
                                         onClick={() => fetchPermissions(currentPage - 1)}
                                         disabled={currentPage === 1 || isLoading}
-                                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                     >
-                                        <span className="sr-only">Previous</span>
-                                        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                                        <ChevronLeft className="h-4 w-4" />
                                     </button>
-                                    {Array.from({ length: Math.max(1, Math.ceil(totalItems / limit)) }).map((_, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => fetchPermissions(i + 1)}
-                                            disabled={currentPage === i + 1 || isLoading}
-                                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${currentPage === i + 1
-                                                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50'
-                                                }`}
-                                        >
-                                            {i + 1}
-                                        </button>
-                                    ))}
+
+                                    {(() => {
+                                        const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+                                        const delta = 1;
+                                        const range = [];
+                                        for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+                                            range.push(i);
+                                        }
+
+                                        if (currentPage - delta > 2) range.unshift('...');
+                                        range.unshift(1);
+                                        if (currentPage + delta < totalPages - 1) range.push('...');
+                                        if (totalPages > 1) range.push(totalPages);
+
+                                        return range.map((page, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => typeof page === 'number' ? fetchPermissions(page) : null}
+                                                disabled={currentPage === page || typeof page !== 'number' || isLoading}
+                                                className={`relative inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentPage === page
+                                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                                    : page === '...'
+                                                        ? 'text-gray-400 cursor-default'
+                                                        : 'text-gray-500 hover:bg-gray-50 hover:text-indigo-600'
+                                                    }`}
+                                            >
+                                                {page}
+                                            </button>
+                                        ));
+                                    })()}
+
                                     <button
                                         onClick={() => fetchPermissions(currentPage + 1)}
                                         disabled={currentPage * limit >= totalItems || isLoading}
-                                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                     >
-                                        <span className="sr-only">Next</span>
-                                        <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                                        <ChevronRight className="h-4 w-4" />
                                     </button>
                                 </nav>
                             </div>
@@ -699,7 +709,7 @@ export function PermissionsManagement() {
                                     });
 
                                     // Sort entries
-                                    const sortedEntries = Object.entries(moduleMap).sort(([pathA, dataA], [pathB, dataB]) => {
+                                    const sortedEntries = Object.entries(moduleMap).sort(([pathA], [pathB]) => {
                                         const partsA = pathA.split('.');
                                         const partsB = pathB.split('.');
 
