@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Eye, ChevronLeft, ChevronRight, Activity, Mail, XCircle } from 'lucide-react';
+import { PortalTooltip } from '@/components/ui/portal-tooltip';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
 
@@ -161,7 +162,13 @@ export function ContactList() {
                                             <div className="text-sm text-gray-600">{contact.email}</div>
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="text-sm text-gray-900 max-w-xs truncate">{contact.subject}</div>
+                                            {contact.subject && contact.subject.length > 30 ? (
+                                                <PortalTooltip content={contact.subject}>
+                                                    <div className="text-sm text-gray-900 max-w-xs truncate">{contact.subject}</div>
+                                                </PortalTooltip>
+                                            ) : (
+                                                <div className="text-sm text-gray-900 max-w-xs truncate">{contact.subject}</div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-500">
                                             {(() => {

@@ -5,6 +5,7 @@ import { User, Settings, Activity, Mail, Shield, Bell, Users, Trash2, Edit2, Use
 import api from '@/lib/axios';
 import axios from 'axios';
 import toast from 'react-hot-toast';
+import { PermissionsManagement } from './permissions-management';
 import { ContentManagement } from './content-management';
 import { validatePassword, generatePassword } from '@/lib/validation';
 import { PasswordChecklist } from './password-checklist';
@@ -60,8 +61,9 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'security', label: 'Security', icon: Shield, permission: Permission.SECURITY },
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
         { id: 'users', label: 'Users', icon: Users },
+        { id: 'permissions-mgmt', label: 'Permissions Management', icon: Shield },
         { id: 'content', label: 'Content', icon: FileText },
-        { id: 'contact', label: 'Contact Form', icon: Mail, permission: Permission.CONTACT_FORM },
+        { id: 'contact', label: 'Contact Request Entries', icon: Mail, permission: Permission.CONTACT_FORM },
     ];
 
     const tabs = allTabs.filter((tab: { id: string; label: string; icon: LucideIcon; permission?: Permission; role?: Role }) => {
@@ -70,8 +72,12 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                 permissions.includes(Permission.MANAGE_USERS) ||
                 permissions.includes(Permission.MANAGE_PERMISSIONS);
         }
+        if (tab.id === 'permissions-mgmt') {
+            return role === Role.SUPER_ADMIN ||
+                permissions.includes(Permission.MANAGE_PERMISSIONS);
+        }
         if (tab.id === 'content') {
-            return true; // Content tab is now visible to all users
+            return true;
         }
         return (tab.permission && permissions.includes(tab.permission)) ||
             (tab.role && role === tab.role);
@@ -344,19 +350,19 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     return (
         <div className="space-y-6">
             {/* Tab Navigation */}
-            <div className="flex space-x-1 bg-white p-1 rounded-xl shadow-sm border border-gray-100 max-w-4xl overflow-x-auto">
+            <div className="flex space-x-1 bg-white p-1 rounded-xl shadow-sm border border-gray-100 w-full overflow-x-auto">
                 {tabs.map((tab) => {
                     const Icon = tab.icon;
                     return (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center justify-center space-x-2 min-w-[100px] flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 ${activeTab === tab.id
+                            className={`flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 whitespace-nowrap ${activeTab === tab.id
                                 ? 'bg-indigo-600 text-white shadow-md'
                                 : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                                 }`}
                         >
-                            <Icon size={18} />
+                            <Icon size={18} className="shrink-0" />
                             <span>{tab.label}</span>
                         </button>
                     );
@@ -721,35 +727,51 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                 </p>
                                             </div>
                                             <div>
-                                                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                                <nav className="relative z-0 inline-flex rounded-xl shadow-sm -space-x-px bg-white border border-gray-200 p-1" aria-label="Pagination">
                                                     <button
                                                         onClick={() => fetchUsers(currentPage - 1)}
                                                         disabled={currentPage === 1 || isLoadingUsers}
-                                                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                                     >
-                                                        <span className="sr-only">Previous</span>
-                                                        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                                                        <ChevronLeft className="h-4 w-4" />
                                                     </button>
-                                                    {Array.from({ length: Math.max(1, Math.ceil(totalUsers / limit)) }).map((_, i) => (
-                                                        <button
-                                                            key={i}
-                                                            onClick={() => fetchUsers(i + 1)}
-                                                            disabled={currentPage === i + 1 || isLoadingUsers}
-                                                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${currentPage === i + 1
-                                                                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                                                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50'
-                                                                }`}
-                                                        >
-                                                            {i + 1}
-                                                        </button>
-                                                    ))}
+
+                                                    {(() => {
+                                                        const totalPages = Math.max(1, Math.ceil(totalUsers / limit));
+                                                        const delta = 1;
+                                                        const range = [];
+                                                        for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+                                                            range.push(i);
+                                                        }
+
+                                                        if (currentPage - delta > 2) range.unshift('...');
+                                                        range.unshift(1);
+                                                        if (currentPage + delta < totalPages - 1) range.push('...');
+                                                        if (totalPages > 1) range.push(totalPages);
+
+                                                        return range.map((page, i) => (
+                                                            <button
+                                                                key={i}
+                                                                onClick={() => typeof page === 'number' ? fetchUsers(page) : null}
+                                                                disabled={currentPage === page || typeof page !== 'number' || isLoadingUsers}
+                                                                className={`relative inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentPage === page
+                                                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                                                    : page === '...'
+                                                                        ? 'text-gray-400 cursor-default'
+                                                                        : 'text-gray-500 hover:bg-gray-50 hover:text-indigo-600'
+                                                                    }`}
+                                                            >
+                                                                {page}
+                                                            </button>
+                                                        ));
+                                                    })()}
+
                                                     <button
                                                         onClick={() => fetchUsers(currentPage + 1)}
                                                         disabled={currentPage * limit >= totalUsers || isLoadingUsers}
-                                                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                        className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                                     >
-                                                        <span className="sr-only">Next</span>
-                                                        <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                                                        <ChevronRight className="h-4 w-4" />
                                                     </button>
                                                 </nav>
                                             </div>
@@ -776,6 +798,10 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                             </div>
                         </div>
                     </div>
+                )}
+
+                {activeTab === 'permissions-mgmt' && (
+                    <PermissionsManagement />
                 )}
 
                 {activeTab === 'content' && (

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, Activity, FileText, CheckCircle2, XCircle, Eye } from 'lucide-react';
+import { PortalTooltip } from '@/components/ui/portal-tooltip';
 import api from '@/lib/axios';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -55,19 +56,36 @@ export function ContentManagement() {
     }, [currentPage, limit]);
 
     const fetchContent = async (page = currentPage, currentLimit = limit, search = searchTerm) => {
+        // Cancel previous request if it exists
+        if (abortControllerRef.current) {
+            abortControllerRef.current.abort();
+        }
+
+        // Create new AbortController
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
         setIsLoading(true);
         try {
-            const response = await api.get(`/api/content/list?page=${page}&limit=${currentLimit}&search=${encodeURIComponent(search)}`);
+            const response = await api.get(`/api/content/list?page=${page}&limit=${currentLimit}&search=${encodeURIComponent(search)}`, {
+                signal: controller.signal
+            });
             if (response.data.success) {
                 setContentList(response.data.data);
                 setTotalItems(response.data.meta?.totalCount || response.data.data.length);
                 setCurrentPage(page);
             }
         } catch (error) {
+            if (axios.isCancel(error)) {
+                console.log('Request canceled');
+                return;
+            }
             console.error('Fetch content error:', error);
             toast.error('Failed to fetch content modules');
         } finally {
-            setIsLoading(false);
+            if (!controller.signal.aborted) {
+                setIsLoading(false);
+            }
         }
     };
 
@@ -242,22 +260,30 @@ export function ContentManagement() {
                                 contentList.map((content) => (
                                     <tr key={content.id || content._id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4">
-                                            <div className="text-sm font-bold text-gray-900">{content.title}</div>
+                                            {content.title && content.title.length > 20 ? (
+                                                <PortalTooltip content={content.title}>
+                                                    <div className="text-sm font-bold text-gray-900 max-w-[200px] truncate">
+                                                        {content.title}
+                                                    </div>
+                                                </PortalTooltip>
+                                            ) : (
+                                                <div className="text-sm font-bold text-gray-900 max-w-[200px] truncate">
+                                                    {content.title}
+                                                </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
-                                            <div className="group relative">
+                                            {(content.shortDescription || content.description) && (content.shortDescription || content.description)!.length > 40 ? (
+                                                <PortalTooltip content={content.shortDescription || content.description}>
+                                                    <div className="text-sm text-gray-500 max-w-xs truncate">
+                                                        {content.shortDescription || content.description}
+                                                    </div>
+                                                </PortalTooltip>
+                                            ) : (
                                                 <div className="text-sm text-gray-500 max-w-xs truncate">
                                                     {content.shortDescription || content.description}
                                                 </div>
-                                                {(content.shortDescription || content.description) && (content.shortDescription || content.description)!.length > 40 && (
-                                                    <div className="absolute bottom-full left-0 mb-2 hidden group-hover:block z-50">
-                                                        <div className="bg-gray-900 text-white text-xs rounded-lg p-2 shadow-xl max-w-xs whitespace-normal">
-                                                            {content.shortDescription || content.description}
-                                                            <div className="absolute top-full left-4 -mt-1 border-4 border-transparent border-t-gray-900"></div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
+                                            )}
                                         </td>
                                         <td className="px-6 py-4">
                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${content.status === 1
@@ -320,35 +346,51 @@ export function ContentManagement() {
                                 </p>
                             </div>
                             <div>
-                                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                                <nav className="relative z-0 inline-flex rounded-xl shadow-sm -space-x-px bg-white border border-gray-200 p-1" aria-label="Pagination">
                                     <button
                                         onClick={() => fetchContent(currentPage - 1)}
                                         disabled={currentPage === 1 || isLoading}
-                                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                     >
-                                        <span className="sr-only">Previous</span>
-                                        <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                                        <ChevronLeft className="h-4 w-4" />
                                     </button>
-                                    {Array.from({ length: Math.max(1, Math.ceil(totalItems / limit)) }).map((_, i) => (
-                                        <button
-                                            key={i}
-                                            onClick={() => fetchContent(i + 1)}
-                                            disabled={currentPage === i + 1 || isLoading}
-                                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors ${currentPage === i + 1
-                                                ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50'
-                                                }`}
-                                        >
-                                            {i + 1}
-                                        </button>
-                                    ))}
+
+                                    {(() => {
+                                        const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+                                        const delta = 1;
+                                        const range = [];
+                                        for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+                                            range.push(i);
+                                        }
+
+                                        if (currentPage - delta > 2) range.unshift('...');
+                                        range.unshift(1);
+                                        if (currentPage + delta < totalPages - 1) range.push('...');
+                                        if (totalPages > 1) range.push(totalPages);
+
+                                        return range.map((page, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => typeof page === 'number' ? fetchContent(page) : null}
+                                                disabled={currentPage === page || typeof page !== 'number' || isLoading}
+                                                className={`relative inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentPage === page
+                                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                                    : page === '...'
+                                                        ? 'text-gray-400 cursor-default'
+                                                        : 'text-gray-500 hover:bg-gray-50 hover:text-indigo-600'
+                                                    }`}
+                                            >
+                                                {page}
+                                            </button>
+                                        ));
+                                    })()}
+
                                     <button
                                         onClick={() => fetchContent(currentPage + 1)}
                                         disabled={currentPage * limit >= totalItems || isLoading}
-                                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                     >
-                                        <span className="sr-only">Next</span>
-                                        <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                                        <ChevronRight className="h-4 w-4" />
                                     </button>
                                 </nav>
                             </div>
