@@ -24,6 +24,8 @@ export function ContactList() {
     const [currentPage, setCurrentPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [totalItems, setTotalItems] = useState(0);
+    const [sortField, setSortField] = useState<string>('created_at');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
     // View Modal State
     const [showViewModal, setShowViewModal] = useState(false);
@@ -32,16 +34,12 @@ export function ContactList() {
 
     useEffect(() => {
         fetchContacts();
-    }, [currentPage, limit]);
+    }, [currentPage, limit, sortField, sortOrder]);
 
-    const fetchContacts = async (page = currentPage, currentLimit = limit, search = searchTerm) => {
+    const fetchContacts = async (page = currentPage, currentLimit = limit, sortBy = sortField, order = sortOrder) => {
         setIsLoading(true);
         try {
-            // Note: The API might not support search yet based on the user request,
-            // but keeping the param for future or if it does.
-            // The user provided curl doesn't show search params, but standard list usually has them.
-            // We will stick to the provided curl structure for the base call.
-            const response = await api.get(`/api/contact/list?page=${page}&limit=${currentLimit}`);
+            const response = await api.get(`/api/contact/list?page=${page}&limit=${currentLimit}&sortBy=${sortBy}&order=${order}`);
             if (response.data.success) {
                 setContacts(response.data.data);
                 // Adjust based on actual API response structure for meta
@@ -126,10 +124,66 @@ export function ContactList() {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Email</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Subject</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
+                                <th
+                                    className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                    onClick={() => {
+                                        const newOrder = sortField === 'name' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                        setSortField('name');
+                                        setSortOrder(newOrder);
+                                    }}
+                                >
+                                    <div className="flex items-center space-x-1">
+                                        <span>Name</span>
+                                        {sortField === 'name' && (
+                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                        )}
+                                    </div>
+                                </th>
+                                <th
+                                    className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                    onClick={() => {
+                                        const newOrder = sortField === 'email' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                        setSortField('email');
+                                        setSortOrder(newOrder);
+                                    }}
+                                >
+                                    <div className="flex items-center space-x-1">
+                                        <span>Email</span>
+                                        {sortField === 'email' && (
+                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                        )}
+                                    </div>
+                                </th>
+                                <th
+                                    className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                    onClick={() => {
+                                        const newOrder = sortField === 'subject' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                        setSortField('subject');
+                                        setSortOrder(newOrder);
+                                    }}
+                                >
+                                    <div className="flex items-center space-x-1">
+                                        <span>Subject</span>
+                                        {sortField === 'subject' && (
+                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                        )}
+                                    </div>
+                                </th>
+                                <th
+                                    className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                    onClick={() => {
+                                        const newOrder = sortField === 'created_at' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                        setSortField('created_at');
+                                        setSortOrder(newOrder);
+                                    }}
+                                >
+                                    <div className="flex items-center space-x-1">
+                                        <span>Date</span>
+                                        {sortField === 'created_at' && (
+                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                        )}
+                                    </div>
+                                </th>
                                 <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -156,7 +210,7 @@ export function ContactList() {
                                 contacts.map((contact) => (
                                     <tr key={contact.id || contact._id} className="hover:bg-gray-50 transition-colors">
                                         <td className="px-6 py-4">
-                                            <div className="text-sm font-bold text-gray-900">{contact.name}</div>
+                                            <div className="text-sm text-gray-900">{contact.name}</div>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="text-sm text-gray-600">{contact.email}</div>

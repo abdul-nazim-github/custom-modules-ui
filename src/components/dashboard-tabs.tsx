@@ -98,6 +98,8 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     const [currentPage, setCurrentPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [totalUsers, setTotalUsers] = useState(0);
+    const [sortField, setSortField] = useState<string>('name');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
     // Password Update State
     const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -126,12 +128,12 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         if (activeTab === 'users') {
             fetchUsers();
         }
-    }, [activeTab]);
+    }, [activeTab, currentPage, limit, sortField, sortOrder]);
 
-    const fetchUsers = async (page = currentPage, currentLimit = limit) => {
+    const fetchUsers = async (page = currentPage, currentLimit = limit, sortBy = sortField, order = sortOrder) => {
         setIsLoadingUsers(true);
         try {
-            const response = await api.get(`/api/auth/users?page=${page}&limit=${currentLimit}`);
+            const response = await api.get(`/api/auth/users?page=${page}&limit=${currentLimit}&sortBy=${sortBy}&order=${order}`);
             if (response.data.success) {
                 const fetchedUsers = response.data.data;
                 setUsers(fetchedUsers);
@@ -294,6 +296,11 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
 
         if (passwordData.newPassword !== passwordData.confirmPassword) {
             toast.error('New password and confirm password do not match');
+            return;
+        }
+
+        if (passwordData.newPassword === passwordData.oldPassword) {
+            toast.error('New password cannot be the same as the old password');
             return;
         }
 
@@ -622,8 +629,36 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-100">
                                             <tr>
-                                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">User</th>
-                                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Role</th>
+                                                <th
+                                                    className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                                    onClick={() => {
+                                                        const newOrder = sortField === 'name' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                                        setSortField('name');
+                                                        setSortOrder(newOrder);
+                                                    }}
+                                                >
+                                                    <div className="flex items-center space-x-1">
+                                                        <span>User</span>
+                                                        {sortField === 'name' && (
+                                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                                        )}
+                                                    </div>
+                                                </th>
+                                                <th
+                                                    className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                                    onClick={() => {
+                                                        const newOrder = sortField === 'role' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                                        setSortField('role');
+                                                        setSortOrder(newOrder);
+                                                    }}
+                                                >
+                                                    <div className="flex items-center space-x-1">
+                                                        <span>Role</span>
+                                                        {sortField === 'role' && (
+                                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                                        )}
+                                                    </div>
+                                                </th>
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Permissions</th>
                                                 <th className="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
                                             </tr>
