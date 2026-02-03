@@ -5,6 +5,7 @@ interface SpinnerProps extends React.HTMLAttributes<HTMLDivElement> {
     size?: number;
 }
 
+
 export function Spinner({ className, size = 24, ...props }: SpinnerProps) {
     return (
         <div className={cn('flex items-center justify-center', className)} {...props}>

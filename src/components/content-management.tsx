@@ -51,11 +51,14 @@ export function ContentManagement() {
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
+    const [sortField, setSortField] = useState<string>('updated_at');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
     useEffect(() => {
         fetchContent();
-    }, [currentPage, limit]);
+    }, [currentPage, limit, sortField, sortOrder]);
 
-    const fetchContent = async (page = currentPage, currentLimit = limit, search = searchTerm) => {
+    const fetchContent = async (page = currentPage, currentLimit = limit, search = searchTerm, sortBy = sortField, order = sortOrder) => {
         // Cancel previous request if it exists
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -67,7 +70,7 @@ export function ContentManagement() {
 
         setIsLoading(true);
         try {
-            const response = await api.get(`/api/content/list?page=${page}&limit=${currentLimit}&search=${encodeURIComponent(search)}`, {
+            const response = await api.get(`/api/content/list?page=${page}&limit=${currentLimit}&search=${encodeURIComponent(search)}&sortBy=${sortBy}&order=${order}`, {
                 signal: controller.signal
             });
             if (response.data.success) {
@@ -112,8 +115,12 @@ export function ContentManagement() {
     };
 
     const handleSaveContent = async () => {
-        if (!currentContent.title || !currentContent.shortDescription || !currentContent.content) {
-            toast.error('Please fill in all required fields');
+        const title = currentContent.title?.trim();
+        const shortDescription = currentContent.shortDescription?.trim();
+        const content = currentContent.content?.trim();
+
+        if (!title || !shortDescription || !content) {
+            toast.error('Please fill in all mandatory fields');
             return;
         }
 
@@ -121,11 +128,17 @@ export function ContentManagement() {
         const loadingToast = toast.loading(isEditing ? 'Updating content...' : 'Creating content...');
 
         try {
+            const payload = {
+                ...currentContent,
+                title,
+                shortDescription,
+                content
+            };
             if (isEditing) {
-                await api.put(`/api/content/update/${currentContent.id}`, currentContent);
+                await api.put(`/api/content/update/${currentContent.id}`, payload);
                 toast.success('Content updated successfully!', { id: loadingToast });
             } else {
-                await api.post('/api/content/create', currentContent);
+                await api.post('/api/content/create', payload);
                 toast.success('Content created successfully!', { id: loadingToast });
             }
             setShowModal(false);
@@ -181,7 +194,7 @@ export function ContentManagement() {
                     className="flex items-center space-x-2 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 font-bold"
                 >
                     <Plus size={20} />
-                    <span>Create New Module</span>
+                    <span>Create New Content</span>
                 </button>
             </div>
 
@@ -229,10 +242,66 @@ export function ContentManagement() {
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Title</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Description</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Last Updated</th>
+                                <th
+                                    className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                    onClick={() => {
+                                        const newOrder = sortField === 'title' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                        setSortField('title');
+                                        setSortOrder(newOrder);
+                                    }}
+                                >
+                                    <div className="flex items-center space-x-1">
+                                        <span>Title</span>
+                                        {sortField === 'title' && (
+                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                        )}
+                                    </div>
+                                </th>
+                                <th
+                                    className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                    onClick={() => {
+                                        const newOrder = sortField === 'shortDescription' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                        setSortField('shortDescription');
+                                        setSortOrder(newOrder);
+                                    }}
+                                >
+                                    <div className="flex items-center space-x-1">
+                                        <span>Description</span>
+                                        {sortField === 'shortDescription' && (
+                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                        )}
+                                    </div>
+                                </th>
+                                <th
+                                    className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                    onClick={() => {
+                                        const newOrder = sortField === 'status' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                        setSortField('status');
+                                        setSortOrder(newOrder);
+                                    }}
+                                >
+                                    <div className="flex items-center space-x-1">
+                                        <span>Status</span>
+                                        {sortField === 'status' && (
+                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                        )}
+                                    </div>
+                                </th>
+                                <th
+                                    className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                    onClick={() => {
+                                        const newOrder = sortField === 'updated_at' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                        setSortField('updated_at');
+                                        setSortOrder(newOrder);
+                                    }}
+                                >
+                                    <div className="flex items-center space-x-1">
+                                        <span>Last Updated</span>
+                                        {sortField === 'updated_at' && (
+                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                        )}
+                                    </div>
+                                </th>
                                 <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                             </tr>
                         </thead>
@@ -262,12 +331,12 @@ export function ContentManagement() {
                                         <td className="px-6 py-4">
                                             {content.title && content.title.length > 20 ? (
                                                 <PortalTooltip content={content.title}>
-                                                    <div className="text-sm font-bold text-gray-900 max-w-[200px] truncate">
+                                                    <div className="text-sm text-gray-900 max-w-[200px] truncate">
                                                         {content.title}
                                                     </div>
                                                 </PortalTooltip>
                                             ) : (
-                                                <div className="text-sm font-bold text-gray-900 max-w-[200px] truncate">
+                                                <div className="text-sm text-gray-900 max-w-[200px] truncate">
                                                     {content.title}
                                                 </div>
                                             )}
@@ -418,19 +487,19 @@ export function ContentManagement() {
 
             {/* Create/Edit Modal */}
             {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-2xl overflow-hidden my-8 animate-in zoom-in-95 duration-200">
                         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                             <h3 className="text-xl font-bold text-gray-900">
-                                {isEditing ? 'Edit Content Module' : 'Create New Module'}
+                                {isEditing ? 'Edit Content' : 'Create New Content'}
                             </h3>
                             <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">
                                 <XCircle size={24} />
                             </button>
                         </div>
-                        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+                        <div className="p-6 space-y-6 max-h-[calc(100vh-250px)] overflow-y-auto">
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-gray-700">Title</label>
+                                <label className="text-sm font-bold text-gray-700">Title <span className="text-red-500">*</span></label>
                                 <input
                                     type="text"
                                     value={currentContent.title}
@@ -440,7 +509,7 @@ export function ContentManagement() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-gray-700">Short Description</label>
+                                <label className="text-sm font-bold text-gray-700">Short Description <span className="text-red-500">*</span></label>
                                 <textarea
                                     value={currentContent.shortDescription}
                                     onChange={(e) => setCurrentContent({ ...currentContent, shortDescription: e.target.value })}
@@ -450,7 +519,7 @@ export function ContentManagement() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-gray-700">Content (HTML Supported)</label>
+                                <label className="text-sm font-bold text-gray-700">Content (HTML Supported) <span className="text-red-500">*</span></label>
                                 <textarea
                                     value={currentContent.content}
                                     onChange={(e) => setCurrentContent({ ...currentContent, content: e.target.value })}
@@ -487,7 +556,7 @@ export function ContentManagement() {
                                 className="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-lg shadow-indigo-200 disabled:opacity-50 flex items-center space-x-2"
                             >
                                 {isSaving && <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                                <span>{isSaving ? 'Saving...' : (isEditing ? 'Update Module' : 'Create Module')}</span>
+                                <span>{isSaving ? 'Saving...' : (isEditing ? 'Update Content' : 'Create Content')}</span>
                             </button>
                         </div>
                     </div>
@@ -502,7 +571,7 @@ export function ContentManagement() {
                             <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-4">
                                 <Trash2 size={24} />
                             </div>
-                            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Content Module</h3>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Content</h3>
                             <p className="text-gray-500">
                                 Are you sure you want to delete <span className="font-bold text-gray-900">{contentToDelete?.title}</span>?
                                 This action cannot be undone.
@@ -521,7 +590,7 @@ export function ContentManagement() {
                                 className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-lg shadow-red-200 disabled:opacity-50 flex items-center space-x-2"
                             >
                                 {isDeleting && <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-                                <span>{isDeleting ? 'Deleting...' : 'Delete Module'}</span>
+                                <span>{isDeleting ? 'Deleting...' : 'Delete'}</span>
                             </button>
                         </div>
                     </div>
@@ -543,7 +612,7 @@ export function ContentManagement() {
                         <div className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
                             <div className="space-y-1">
                                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Title</label>
-                                <p className="text-xl font-bold text-gray-900">{contentToView.title}</p>
+                                <p className="text-gray-900 leading-relaxed">{contentToView.title}</p>
                             </div>
                             <div className="space-y-1">
                                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Short Description</label>
