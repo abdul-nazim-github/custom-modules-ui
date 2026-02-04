@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Search, Eye, ChevronLeft, ChevronRight, Activity, Mail, XCircle } from 'lucide-react';
+import { useDebounce } from '@/hooks/use-debounce';
 import { PortalTooltip } from '@/components/ui/portal-tooltip';
 import api from '@/lib/axios';
 import toast from 'react-hot-toast';
@@ -21,6 +22,7 @@ export function ContactList() {
     const [contacts, setContacts] = useState<ContactSubmission[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 2000);
     const [currentPage, setCurrentPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [totalItems, setTotalItems] = useState(0);
@@ -33,13 +35,17 @@ export function ContactList() {
     const [isLoadingDetails, setIsLoadingDetails] = useState(false);
 
     useEffect(() => {
-        fetchContacts();
-    }, [currentPage, limit, sortField, sortOrder]);
+        setCurrentPage(1);
+    }, [debouncedSearchTerm]);
 
-    const fetchContacts = async (page = currentPage, currentLimit = limit, sortBy = sortField, order = sortOrder) => {
+    useEffect(() => {
+        fetchContacts();
+    }, [currentPage, limit, sortField, sortOrder, debouncedSearchTerm]);
+
+    const fetchContacts = async (page = currentPage, currentLimit = limit, search = debouncedSearchTerm, sortBy = sortField, order = sortOrder) => {
         setIsLoading(true);
         try {
-            const response = await api.get(`/api/contact/list?page=${page}&limit=${currentLimit}&sortBy=${sortBy}&order=${order}`);
+            const response = await api.get(`/api/contact/list?page=${page}&limit=${currentLimit}&search=${encodeURIComponent(search)}&sortBy=${sortBy}&order=${order}`);
             if (response.data.success) {
                 setContacts(response.data.data);
                 // Adjust based on actual API response structure for meta
@@ -89,8 +95,16 @@ export function ContactList() {
 
             {/* Filters and Refresh */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-8">
-                <div className="flex-1"></div>
-                {/* Search input removed for now as it wasn't explicitly requested/verified in API */}
+                <form onSubmit={handleSearch} className="relative flex-1 max-w-md">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                    <input
+                        type="text"
+                        placeholder="Search submissions..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full pl-12 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium"
+                    />
+                </form>
 
                 <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Plus, Search, Edit2, Trash2, ChevronLeft, ChevronRight, Activity, FileText, CheckCircle2, XCircle, Eye } from 'lucide-react';
+import { useDebounce } from '@/hooks/use-debounce';
 import { PortalTooltip } from '@/components/ui/portal-tooltip';
 import api from '@/lib/axios';
 import axios from 'axios';
@@ -25,6 +26,7 @@ export function ContentManagement() {
     const [contentList, setContentList] = useState<ContentModule[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 2000);
     const [currentPage, setCurrentPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [totalItems, setTotalItems] = useState(0);
@@ -55,10 +57,14 @@ export function ContentManagement() {
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
     useEffect(() => {
-        fetchContent();
-    }, [currentPage, limit, sortField, sortOrder]);
+        setCurrentPage(1);
+    }, [debouncedSearchTerm]);
 
-    const fetchContent = async (page = currentPage, currentLimit = limit, search = searchTerm, sortBy = sortField, order = sortOrder) => {
+    useEffect(() => {
+        fetchContent();
+    }, [currentPage, limit, sortField, sortOrder, debouncedSearchTerm]);
+
+    const fetchContent = async (page = currentPage, currentLimit = limit, search = debouncedSearchTerm, sortBy = sortField, order = sortOrder) => {
         // Cancel previous request if it exists
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();

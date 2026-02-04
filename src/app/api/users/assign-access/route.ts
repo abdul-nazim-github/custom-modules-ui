@@ -3,8 +3,9 @@ import { cookies } from 'next/headers';
 import axios from 'axios';
 import { getErrorMessage } from '@/lib/error-utils';
 
-export async function GET(request: Request) {
+export async function POST(request: Request) {
   try {
+    const body = await request.json();
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('accessToken')?.value;
 
@@ -15,18 +16,10 @@ export async function GET(request: Request) {
       );
     }
 
-    // Extract query parameters from the request URL
-    const { searchParams } = new URL(request.url);
-    const page = searchParams.get('page') || '1';
-    const limit = searchParams.get('limit') || '10';
-    const search = searchParams.get('search') || '';
-    const sortBy = searchParams.get('sortBy') || '';
-    const order = searchParams.get('order') || '';
-
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
 
     try {
-      const response = await axios.get(`${backendUrl}/permissions/list?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&sortBy=${sortBy}&order=${order}`, {
+      const response = await axios.post(`${backendUrl}/users/assign-access`, body, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
@@ -36,16 +29,15 @@ export async function GET(request: Request) {
       return NextResponse.json(response.data);
     } catch (backendError: unknown) {
       if (axios.isAxiosError(backendError)) {
-        console.error('Backend list permissions error status:', backendError.response?.status);
-        console.error('Backend list permissions error message:', backendError.response?.data?.message || backendError.message);
+        console.error('Backend assign-access error status:', backendError.response?.status);
+        console.error('Backend assign-access error message:', backendError.response?.data?.message || backendError.message);
       } else {
-        console.error('Backend list permissions error:', backendError);
+        console.error('Backend assign-access error:', backendError);
       }
       throw backendError;
     }
-
   } catch (error: unknown) {
-    console.error('List permissions error:', error);
+    console.error('Assign-access error:', error);
     const message = getErrorMessage(error);
     let status = 500;
     if (axios.isAxiosError(error) && error.response) {

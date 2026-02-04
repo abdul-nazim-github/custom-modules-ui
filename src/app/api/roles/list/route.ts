@@ -15,37 +15,39 @@ export async function GET(request: Request) {
       );
     }
 
-    // Extract query parameters from the request URL
     const { searchParams } = new URL(request.url);
     const page = searchParams.get('page') || '1';
     const limit = searchParams.get('limit') || '10';
-    const search = searchParams.get('search') || '';
-    const sortBy = searchParams.get('sortBy') || '';
-    const order = searchParams.get('order') || '';
+    const search = searchParams.get('search');
+    const sortBy = searchParams.get('sortBy');
+    const order = searchParams.get('order');
 
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
 
+    const query = new URLSearchParams({ page, limit });
+    if (search) query.set('search', search);
+    if (sortBy) query.set('sortBy', sortBy);
+    if (order) query.set('order', order);
+
     try {
-      const response = await axios.get(`${backendUrl}/permissions/list?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&sortBy=${sortBy}&order=${order}`, {
+      const response = await axios.get(`${backendUrl}/roles/list?${query.toString()}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'
         }
       });
-
       return NextResponse.json(response.data);
     } catch (backendError: unknown) {
       if (axios.isAxiosError(backendError)) {
-        console.error('Backend list permissions error status:', backendError.response?.status);
-        console.error('Backend list permissions error message:', backendError.response?.data?.message || backendError.message);
+        console.error('Backend list roles error status:', backendError.response?.status);
+        console.error('Backend list roles error message:', backendError.response?.data?.message || backendError.message);
       } else {
-        console.error('Backend list permissions error:', backendError);
+        console.error('Backend list roles error:', backendError);
       }
       throw backendError;
     }
-
   } catch (error: unknown) {
-    console.error('List permissions error:', error);
+    console.error('List roles error:', error);
     const message = getErrorMessage(error);
     let status = 500;
     if (axios.isAxiosError(error) && error.response) {
