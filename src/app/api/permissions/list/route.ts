@@ -19,11 +19,14 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = searchParams.get('page') || '1';
     const limit = searchParams.get('limit') || '10';
+    const search = searchParams.get('search') || '';
+    const sortBy = searchParams.get('sortBy') || '';
+    const order = searchParams.get('order') || '';
 
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
 
     try {
-      const response = await axios.get(`${backendUrl}/permissions/list?page=${page}&limit=${limit}`, {
+      const response = await axios.get(`${backendUrl}/permissions/list?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&sortBy=${sortBy}&order=${order}`, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'Content-Type': 'application/json'

@@ -33,7 +33,7 @@ export function RolesManagement() {
     const [matrix, setMatrix] = useState<PermissionMatrix | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const debouncedSearchTerm = useDebounce(searchTerm, 3000);
+    const debouncedSearchTerm = useDebounce(searchTerm, 2000);
     const [currentPage, setCurrentPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [totalItems, setTotalItems] = useState(0);
@@ -221,8 +221,31 @@ export function RolesManagement() {
         return role.name || role.key || role.slug || 'Unnamed Role';
     };
 
+    const formatPermissionLabel = (permission: string): string => {
+        if (permission.endsWith('.*')) {
+            const parts = permission.slice(0, -2).split('.');
+            const moduleName = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+            return `All ${moduleName} Actions`;
+        }
+
+        const parts = permission.split('.');
+        const action = parts[parts.length - 1];
+        const modulePath = parts.slice(0, -1);
+
+        const moduleLabel = modulePath.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+        const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
+
+        return `${moduleLabel} - ${actionLabel}`;
+    };
+
     const getRoleUpdatedAt = (role: RoleData) => {
-        return role.updated_at || role.updatedAt || role.created_at || role.createdAt || '';
+        const dateStr = role.updated_at || role.updatedAt || role.created_at || role.createdAt;
+        if (!dateStr) return '-';
+        try {
+            return new Date(dateStr).toLocaleDateString();
+        } catch (e) {
+            return '-';
+        }
     };
 
     const getStatusLabel = (status?: number | string) => {
@@ -263,12 +286,6 @@ export function RolesManagement() {
                                 />
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                             </div>
-                            <button
-                                type="submit"
-                                className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-bold"
-                            >
-                                Search
-                            </button>
                         </form>
                     </div>
 
@@ -294,8 +311,22 @@ export function RolesManagement() {
                                                     <div className="text-xs text-gray-500 mt-1 line-clamp-2">{role.description}</div>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-gray-600">
-                                                {role.permissions?.length || 0}
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-wrap gap-1 max-w-xs">
+                                                    {(role.permissions || []).slice(0, 3).map(p => (
+                                                        <span key={p} className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] rounded-md font-bold whitespace-nowrap">
+                                                            {formatPermissionLabel(p)}
+                                                        </span>
+                                                    ))}
+                                                    {(role.permissions || []).length > 3 && (
+                                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-md font-bold">
+                                                            +{(role.permissions || []).length - 3} more
+                                                        </span>
+                                                    )}
+                                                    {(role.permissions || []).length === 0 && (
+                                                        <span className="text-gray-400 text-xs italic">No permissions</span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="px-6 py-4">
                                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">

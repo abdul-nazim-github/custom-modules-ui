@@ -42,10 +42,12 @@ export function PermissionsManagement() {
     const [matrix, setMatrix] = useState<PermissionMatrix | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const debouncedSearchTerm = useDebounce(searchTerm, 3000);
+    const debouncedSearchTerm = useDebounce(searchTerm, 2000);
     const [currentPage, setCurrentPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [totalItems, setTotalItems] = useState(0);
+    const [sortField, setSortField] = useState<string>('updated_at');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
     // Modal State
     const [showModal, setShowModal] = useState(false);
@@ -61,7 +63,7 @@ export function PermissionsManagement() {
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    const fetchPermissions = useCallback(async (page = currentPage, currentLimit = limit, search = debouncedSearchTerm) => {
+    const fetchPermissions = useCallback(async (page = currentPage, currentLimit = limit, search = debouncedSearchTerm, sortBy = sortField, order = sortOrder) => {
         // Cancel previous request if it exists
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -73,7 +75,7 @@ export function PermissionsManagement() {
 
         setIsLoading(true);
         try {
-            const response = await api.get(`/api/permissions/list?page=${page}&limit=${currentLimit}&search=${encodeURIComponent(search)}`, {
+            const response = await api.get(`/api/permissions/list?page=${page}&limit=${currentLimit}&search=${encodeURIComponent(search)}&sortBy=${sortBy}&order=${order}`, {
                 signal: controller.signal
             });
             if (response.data.success) {
@@ -93,7 +95,7 @@ export function PermissionsManagement() {
                 setIsLoading(false);
             }
         }
-    }, [currentPage, limit]);
+    }, [currentPage, limit, debouncedSearchTerm, sortField, sortOrder]);
 
     const fetchUsers = useCallback(async () => {
         try {
@@ -301,9 +303,37 @@ export function PermissionsManagement() {
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
+                                    <th
+                                        className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                        onClick={() => {
+                                            const newOrder = sortField === 'userId' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                            setSortField('userId');
+                                            setSortOrder(newOrder);
+                                        }}
+                                    >
+                                        <div className="flex items-center space-x-1">
+                                            <span>User</span>
+                                            {sortField === 'userId' && (
+                                                <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                            )}
+                                        </div>
+                                    </th>
                                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Permissions</th>
-                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Last Updated</th>
+                                    <th
+                                        className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                        onClick={() => {
+                                            const newOrder = sortField === 'updated_at' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                            setSortField('updated_at');
+                                            setSortOrder(newOrder);
+                                        }}
+                                    >
+                                        <div className="flex items-center space-x-1">
+                                            <span>Last Updated</span>
+                                            {sortField === 'updated_at' && (
+                                                <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                            )}
+                                        </div>
+                                    </th>
                                     <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>

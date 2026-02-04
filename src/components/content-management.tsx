@@ -26,7 +26,7 @@ export function ContentManagement() {
     const [contentList, setContentList] = useState<ContentModule[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const debouncedSearchTerm = useDebounce(searchTerm, 3000);
+    const debouncedSearchTerm = useDebounce(searchTerm, 2000);
     const [currentPage, setCurrentPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [totalItems, setTotalItems] = useState(0);
