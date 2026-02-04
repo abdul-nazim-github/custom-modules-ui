@@ -6,6 +6,7 @@ import api from '@/lib/axios';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { PermissionsManagement } from './permissions-management';
+import { RolesManagement } from './roles-management';
 import { ContentManagement } from './content-management';
 import { validatePassword, generatePassword } from '@/lib/validation';
 import { PasswordChecklist } from './password-checklist';
@@ -45,6 +46,7 @@ interface UserData {
     name: string;
     role: Role;
     permissions: string[];
+    custom_permissions?: string[];
 }
 
 interface DashboardTabsProps {
@@ -62,6 +64,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
         { id: 'users', label: 'Users', icon: Users },
         { id: 'permissions-mgmt', label: 'Permissions Management', icon: Shield },
+        { id: 'roles', label: 'Role Management', icon: Shield },
         { id: 'content', label: 'Content', icon: FileText },
         { id: 'contact', label: 'Contact Request Entries', icon: Mail, permission: Permission.CONTACT_FORM },
     ];
@@ -76,6 +79,10 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             return role === Role.SUPER_ADMIN ||
                 permissions.includes(Permission.MANAGE_PERMISSIONS);
         }
+        if (tab.id === 'roles') {
+            return role === Role.SUPER_ADMIN ||
+                permissions.includes(Permission.MANAGE_PERMISSIONS);
+        }
         if (tab.id === 'content') {
             return true;
         }
@@ -87,7 +94,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     // User Management State
     const [users, setUsers] = useState<UserData[]>([]);
     const [targetUserId, setTargetUserId] = useState('');
-    const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>([]);
+    const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
     const [selectedRole, setSelectedRole] = useState<Role>(Role.USER);
     const [isUpdating, setIsUpdating] = useState(false);
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
@@ -100,6 +107,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     const [totalUsers, setTotalUsers] = useState(0);
     const [sortField, setSortField] = useState<string>('name');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [customPermissionInput, setCustomPermissionInput] = useState('');
 
     // Password Update State
     const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -112,9 +120,21 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
 
     // Comparison logic for disabling buttons
     const currentUser = users.find(u => (u.id || u._id) === targetUserId);
+    const getUserPermissions = (user?: UserData) => {
+        if (!user) return [];
+        if (Array.isArray(user.custom_permissions) && user.custom_permissions.length > 0) {
+            return user.custom_permissions;
+        }
+        return user.permissions || [];
+    };
+
+    const customPermissions = selectedPermissions.filter(
+        permission => !Object.values(Permission).includes(permission as Permission)
+    );
+
     const hasPermissionChanges = currentUser ? (
-        selectedPermissions.length !== currentUser.permissions.length ||
-        !selectedPermissions.every(p => currentUser.permissions.includes(p))
+        selectedPermissions.length !== getUserPermissions(currentUser).length ||
+        !selectedPermissions.every(p => getUserPermissions(currentUser).includes(p))
     ) : false;
     const hasRoleChanges = currentUser ? selectedRole !== currentUser.role : false;
     const isSelfEdit = currentUser ? currentUser.email === userEmail : false;
@@ -155,7 +175,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                         const currentUser = fetchedUsers.find((u: UserData) => (u.id || u._id) === targetUserId);
                         if (currentUser) {
                             setSelectedRole(currentUser.role);
-                            setSelectedPermissions(currentUser.permissions as Permission[]);
+                            setSelectedPermissions(getUserPermissions(currentUser));
                         }
                     } else {
                         // Initial load: select first user
@@ -163,7 +183,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                         const initialId = firstUser.id || firstUser._id;
                         setTargetUserId(initialId);
                         setSelectedRole(firstUser.role);
-                        setSelectedPermissions(firstUser.permissions as Permission[]);
+                        setSelectedPermissions(getUserPermissions(firstUser));
                     }
                 }
             }
@@ -185,17 +205,18 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             return;
         }
         setIsUpdating(true);
-        const loadingToast = toast.loading('Updating permissions...');
+        const loadingToast = toast.loading('Updating access...');
         try {
-            await api.put(`/api/auth/users/${targetUserId}/permissions`, {
-                permissions: selectedPermissions
+            await api.put(`/api/users/${targetUserId}/updateAccess`, {
+                role: selectedRole,
+                custom_permissions: selectedPermissions
             });
-            toast.success('Permissions updated successfully!', { id: loadingToast });
+            toast.success('Access updated successfully!', { id: loadingToast });
 
             // Immediate local state update for "immediate effect"
             setUsers(prevUsers => prevUsers.map(user =>
                 (user.id || user._id) === targetUserId
-                    ? { ...user, permissions: [...selectedPermissions] }
+                    ? { ...user, custom_permissions: [...selectedPermissions], role: selectedRole }
                     : user
             ));
 
@@ -214,17 +235,18 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             return;
         }
         setIsUpdating(true);
-        const loadingToast = toast.loading('Updating role...');
+        const loadingToast = toast.loading('Updating access...');
         try {
-            await api.put(`/api/auth/users/${targetUserId}/role`, {
-                role: selectedRole
+            await api.put(`/api/users/${targetUserId}/updateAccess`, {
+                role: selectedRole,
+                custom_permissions: selectedPermissions
             });
-            toast.success('Role updated successfully!', { id: loadingToast });
+            toast.success('Access updated successfully!', { id: loadingToast });
 
             // Immediate local state update for "immediate effect"
             setUsers(prevUsers => prevUsers.map(user =>
                 (user.id || user._id) === targetUserId
-                    ? { ...user, role: selectedRole }
+                    ? { ...user, role: selectedRole, custom_permissions: [...selectedPermissions] }
                     : user
             ));
 
@@ -280,10 +302,21 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         }
     };
 
-    const togglePermission = (perm: Permission) => {
+    const togglePermission = (perm: string) => {
         setSelectedPermissions(prev =>
             prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]
         );
+    };
+
+    const handleAddCustomPermission = () => {
+        const trimmed = customPermissionInput.trim();
+        if (!trimmed) return;
+        setSelectedPermissions(prev => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+        setCustomPermissionInput('');
+    };
+
+    const handleRemoveCustomPermission = (permission: string) => {
+        setSelectedPermissions(prev => prev.filter(p => p !== permission));
     };
 
     const handlePasswordUpdate = async (e: React.FormEvent) => {
@@ -350,7 +383,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         const user = users.find(u => (u.id || u._id) === userId);
         if (user) {
             setSelectedRole(user.role);
-            setSelectedPermissions(user.permissions as Permission[]);
+            setSelectedPermissions(getUserPermissions(user));
         }
     };
 
@@ -605,6 +638,41 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                     </button>
                                                 ))}
                                             </div>
+                                            <div className="flex flex-col gap-2 mb-4">
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={customPermissionInput}
+                                                        onChange={(e) => setCustomPermissionInput(e.target.value)}
+                                                        placeholder="Add custom permission (e.g. closetab.edit)"
+                                                        disabled={!canManagePermissions || isSelfEdit}
+                                                        className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleAddCustomPermission}
+                                                        disabled={!customPermissionInput.trim() || !canManagePermissions || isSelfEdit}
+                                                        className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold"
+                                                    >
+                                                        Add
+                                                    </button>
+                                                </div>
+                                                {customPermissions.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {customPermissions.map(permission => (
+                                                            <button
+                                                                key={permission}
+                                                                type="button"
+                                                                onClick={() => handleRemoveCustomPermission(permission)}
+                                                                disabled={!canManagePermissions || isSelfEdit}
+                                                                className="px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                {permission}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
                                             <button
                                                 onClick={handleUpdatePermissions}
                                                 disabled={isUpdating || !targetUserId || !hasPermissionChanges || isSelfEdit || !canManagePermissions}
@@ -702,30 +770,35 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4">
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {user.permissions.slice(0, 4).map(p => (
-                                                                <span key={p} className="px-2 py-0.5 bg-gray-200 text-gray-800 text-[10px] rounded-md font-bold">
-                                                                    {PERMISSION_LABELS[p as Permission] || p.split('~').pop()}
-                                                                </span>
-                                                            ))}
-                                                            {user.permissions.length > 4 && (
-                                                                <div className="relative group">
-                                                                    <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded-md font-bold cursor-help">
-                                                                        +{user.permissions.length - 4} more
-                                                                    </span>
-                                                                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-[10px] rounded-lg shadow-xl z-50">
-                                                                        <div className="flex flex-wrap gap-1">
-                                                                            {user.permissions.slice(4).map(p => (
-                                                                                <span key={p} className="px-1.5 py-0.5 bg-gray-700 rounded">
-                                                                                    {PERMISSION_LABELS[p as Permission] || p.split('~').pop()}
-                                                                                </span>
-                                                                            ))}
+                                                        {(() => {
+                                                            const userPermissions = getUserPermissions(user);
+                                                            return (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {userPermissions.slice(0, 4).map(p => (
+                                                                        <span key={p} className="px-2 py-0.5 bg-gray-200 text-gray-800 text-[10px] rounded-md font-bold">
+                                                                            {PERMISSION_LABELS[p as Permission] || p.split('~').pop()}
+                                                                        </span>
+                                                                    ))}
+                                                                    {userPermissions.length > 4 && (
+                                                                        <div className="relative group">
+                                                                            <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded-md font-bold cursor-help">
+                                                                                +{userPermissions.length - 4} more
+                                                                            </span>
+                                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-[10px] rounded-lg shadow-xl z-50">
+                                                                                <div className="flex flex-wrap gap-1">
+                                                                                    {userPermissions.slice(4).map(p => (
+                                                                                        <span key={p} className="px-1.5 py-0.5 bg-gray-700 rounded">
+                                                                                            {PERMISSION_LABELS[p as Permission] || p.split('~').pop()}
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
+                                                                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
+                                                                            </div>
                                                                         </div>
-                                                                        <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
-                                                                    </div>
+                                                                    )}
                                                                 </div>
-                                                            )}
-                                                        </div>
+                                                            );
+                                                        })()}
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                         <div className="flex justify-end space-x-2">
@@ -837,6 +910,10 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
 
                 {activeTab === 'permissions-mgmt' && (
                     <PermissionsManagement />
+                )}
+
+                {activeTab === 'roles' && (
+                    <RolesManagement />
                 )}
 
                 {activeTab === 'content' && (

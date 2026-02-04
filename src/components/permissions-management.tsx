@@ -4,6 +4,7 @@ import api from '@/lib/axios';
 import axios from 'axios';
 import { Activity, ChevronLeft, ChevronRight, Edit2, Eye, Plus, Search, Shield, User, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useDebounce } from '@/hooks/use-debounce';
 import toast from 'react-hot-toast';
 
 interface PermissionData {
@@ -41,6 +42,7 @@ export function PermissionsManagement() {
     const [matrix, setMatrix] = useState<PermissionMatrix | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const debouncedSearchTerm = useDebounce(searchTerm, 3000);
     const [currentPage, setCurrentPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [totalItems, setTotalItems] = useState(0);
@@ -59,7 +61,7 @@ export function PermissionsManagement() {
 
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    const fetchPermissions = useCallback(async (page = currentPage, currentLimit = limit) => {
+    const fetchPermissions = useCallback(async (page = currentPage, currentLimit = limit, search = debouncedSearchTerm) => {
         // Cancel previous request if it exists
         if (abortControllerRef.current) {
             abortControllerRef.current.abort();
@@ -71,7 +73,7 @@ export function PermissionsManagement() {
 
         setIsLoading(true);
         try {
-            const response = await api.get(`/api/permissions/list?page=${page}&limit=${currentLimit}`, {
+            const response = await api.get(`/api/permissions/list?page=${page}&limit=${currentLimit}&search=${encodeURIComponent(search)}`, {
                 signal: controller.signal
             });
             if (response.data.success) {
@@ -116,10 +118,14 @@ export function PermissionsManagement() {
     }, []);
 
     useEffect(() => {
+        setCurrentPage(1);
+    }, [debouncedSearchTerm]);
+
+    useEffect(() => {
         fetchPermissions();
         // fetchUsers(); // Only fetch users when needed for modal
         fetchMatrix();
-    }, [fetchPermissions, fetchMatrix]);
+    }, [fetchPermissions, fetchMatrix, debouncedSearchTerm]);
 
     const getUserName = (permission: PermissionData) => {
         if (permission.user) {
@@ -235,99 +241,94 @@ export function PermissionsManagement() {
     };
 
     return (
-        <div className="p-8 transition-all duration-500 opacity-100 translate-y-0">
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h2 className="text-2xl font-bold text-gray-900">Permissions Management</h2>
-                    <p className="text-gray-500 mt-1">Manage user permissions with granular control.</p>
-                </div>
-                <button
-                    onClick={handleOpenCreateModal}
-                    className="flex items-center space-x-2 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 font-bold"
-                >
-                    <Plus size={20} />
-                    <span>Assign Permissions</span>
-                </button>
-            </div>
-
-            {/* Filters and Search */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-8">
-                <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                    <input
-                        type="text"
-                        placeholder="Search by user..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full pl-12 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium"
-                    />
-                </div>
-                <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2">
-                        <span className="text-sm text-gray-500 font-medium">Show:</span>
-                        <select
-                            value={limit}
-                            onChange={(e) => {
-                                setLimit(Number(e.target.value));
-                                setCurrentPage(1);
-                            }}
-                            className="px-3 py-1.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 text-sm font-medium"
-                        >
-                            <option value={10}>10</option>
-                            <option value={20}>20</option>
-                            <option value={50}>50</option>
-                        </select>
+        <>
+            <div className="p-8 transition-all duration-500 opacity-100 translate-y-0">
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h2 className="text-2xl font-bold text-gray-900">Permissions Management</h2>
+                        <p className="text-gray-500 mt-1">Manage user permissions with granular control.</p>
                     </div>
                     <button
-                        onClick={() => fetchPermissions()}
-                        className="p-2.5 text-gray-500 hover:text-indigo-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-gray-200"
-                        title="Refresh"
+                        onClick={handleOpenCreateModal}
+                        className="flex items-center space-x-2 px-6 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 font-bold"
                     >
-                        <Activity size={20} className={isLoading ? 'animate-spin' : ''} />
+                        <Plus size={20} />
+                        <span>Assign Permissions</span>
                     </button>
                 </div>
-            </div>
 
-            {/* Permissions Table */}
-            <div className="overflow-hidden rounded-2xl border border-gray-100 shadow-sm bg-white">
-                <div className="overflow-x-auto min-h-[580px]">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Permissions</th>
-                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Last Updated</th>
-                                <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                            {isLoading ? (
+                {/* Filters and Search */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100 mb-8">
+                    <div className="relative flex-1 max-w-md">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        <input
+                            type="text"
+                            placeholder="Search by user..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="w-full pl-12 pr-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium"
+                        />
+                    </div>
+                    <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-500 font-medium">Show:</span>
+                            <select
+                                value={limit}
+                                onChange={(e) => {
+                                    setLimit(Number(e.target.value));
+                                    setCurrentPage(1);
+                                }}
+                                className="px-3 py-1.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 text-sm font-medium"
+                            >
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                            </select>
+                        </div>
+                        <button
+                            onClick={() => fetchPermissions()}
+                            className="p-2.5 text-gray-500 hover:text-indigo-600 hover:bg-white rounded-xl transition-all border border-transparent hover:border-gray-200"
+                            title="Refresh"
+                        >
+                            <Activity size={20} className={isLoading ? 'animate-spin' : ''} />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Permissions Table */}
+                <div className="overflow-hidden rounded-2xl border border-gray-100 shadow-sm bg-white">
+                    <div className="overflow-x-auto min-h-[580px]">
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
                                 <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center">
-                                        <div className="flex flex-col items-center">
-                                            <div className="h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
-                                            <p className="text-gray-500 font-medium">Loading permissions...</p>
-                                        </div>
-                                    </td>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">User</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Permissions</th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Last Updated</th>
+                                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
-                            ) : permissionsList.length === 0 ? (
-                                <tr>
-                                    <td colSpan={4} className="px-6 py-12 text-center">
-                                        <div className="flex flex-col items-center text-gray-400">
-                                            <Shield size={48} className="mb-4 opacity-20" />
-                                            <p className="text-lg font-medium">No permissions found</p>
-                                            <p className="text-sm">Assign permissions to users to get started.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                permissionsList
-                                    .filter(perm => {
-                                        if (!searchTerm) return true;
-                                        const userName = getUserName(perm).toLowerCase();
-                                        return userName.includes(searchTerm.toLowerCase());
-                                    })
-                                    .map((permission) => (
+                            </thead>
+                            <tbody className="divide-y divide-gray-200">
+                                {isLoading ? (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-12 text-center">
+                                            <div className="flex flex-col items-center">
+                                                <div className="h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
+                                                <p className="text-gray-500 font-medium">Loading permissions...</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : permissionsList.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={4} className="px-6 py-12 text-center">
+                                            <div className="flex flex-col items-center text-gray-400">
+                                                <Shield size={48} className="mb-4 opacity-20" />
+                                                <p className="text-lg font-medium">No permissions found</p>
+                                                <p className="text-sm">Assign permissions to users to get started.</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    permissionsList.map((permission) => (
                                         <tr key={permission._id} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center">
@@ -376,78 +377,79 @@ export function PermissionsManagement() {
                                             </td>
                                         </tr>
                                     ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
 
-                {/* Pagination */}
-                {!isLoading && permissionsList.length > 0 && (
-                    <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                            <div>
-                                <p className="text-sm text-gray-700">
-                                    Showing <span className="font-bold">{(currentPage - 1) * limit + 1}</span> to <span className="font-bold">{Math.min(currentPage * limit, totalItems)}</span> of{' '}
-                                    <span className="font-bold">{totalItems}</span> results
-                                </p>
-                            </div>
-                            <div>
-                                <nav className="relative z-0 inline-flex rounded-xl shadow-sm -space-x-px bg-white border border-gray-200 p-1" aria-label="Pagination">
-                                    <button
-                                        onClick={() => fetchPermissions(currentPage - 1)}
-                                        disabled={currentPage === 1 || isLoading}
-                                        className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                    >
-                                        <ChevronLeft className="h-4 w-4" />
-                                    </button>
+                    {/* Pagination */}
+                    {!isLoading && permissionsList.length > 0 && (
+                        <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                <div>
+                                    <p className="text-sm text-gray-700">
+                                        Showing <span className="font-bold">{(currentPage - 1) * limit + 1}</span> to <span className="font-bold">{Math.min(currentPage * limit, totalItems)}</span> of{' '}
+                                        <span className="font-bold">{totalItems}</span> results
+                                    </p>
+                                </div>
+                                <div>
+                                    <nav className="relative z-0 inline-flex rounded-xl shadow-sm -space-x-px bg-white border border-gray-200 p-1" aria-label="Pagination">
+                                        <button
+                                            onClick={() => fetchPermissions(currentPage - 1)}
+                                            disabled={currentPage === 1 || isLoading}
+                                            className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                        >
+                                            <ChevronLeft className="h-4 w-4" />
+                                        </button>
 
-                                    {(() => {
-                                        const totalPages = Math.max(1, Math.ceil(totalItems / limit));
-                                        const delta = 1;
-                                        const range = [];
-                                        for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
-                                            range.push(i);
-                                        }
+                                        {(() => {
+                                            const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+                                            const delta = 1;
+                                            const range = [];
+                                            for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+                                                range.push(i);
+                                            }
 
-                                        if (currentPage - delta > 2) range.unshift('...');
-                                        range.unshift(1);
-                                        if (currentPage + delta < totalPages - 1) range.push('...');
-                                        if (totalPages > 1) range.push(totalPages);
+                                            if (currentPage - delta > 2) range.unshift('...');
+                                            range.unshift(1);
+                                            if (currentPage + delta < totalPages - 1) range.push('...');
+                                            if (totalPages > 1) range.push(totalPages);
 
-                                        return range.map((page, i) => (
-                                            <button
-                                                key={i}
-                                                onClick={() => typeof page === 'number' ? fetchPermissions(page) : null}
-                                                disabled={currentPage === page || typeof page !== 'number' || isLoading}
-                                                className={`relative inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentPage === page
-                                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
-                                                    : page === '...'
-                                                        ? 'text-gray-400 cursor-default'
-                                                        : 'text-gray-500 hover:bg-gray-50 hover:text-indigo-600'
-                                                    }`}
-                                            >
-                                                {page}
-                                            </button>
-                                        ));
-                                    })()}
+                                            return range.map((page, i) => (
+                                                <button
+                                                    key={i}
+                                                    onClick={() => typeof page === 'number' ? fetchPermissions(page) : null}
+                                                    disabled={currentPage === page || typeof page !== 'number' || isLoading}
+                                                    className={`relative inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentPage === page
+                                                        ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                                        : page === '...'
+                                                            ? 'text-gray-400 cursor-default'
+                                                            : 'text-gray-500 hover:bg-gray-50 hover:text-indigo-600'
+                                                        }`}
+                                                >
+                                                    {page}
+                                                </button>
+                                            ));
+                                        })()}
 
-                                    <button
-                                        onClick={() => fetchPermissions(currentPage + 1)}
-                                        disabled={currentPage * limit >= totalItems || isLoading}
-                                        className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                    >
-                                        <ChevronRight className="h-4 w-4" />
-                                    </button>
-                                </nav>
+                                        <button
+                                            onClick={() => fetchPermissions(currentPage + 1)}
+                                            disabled={currentPage * limit >= totalItems || isLoading}
+                                            className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                        >
+                                            <ChevronRight className="h-4 w-4" />
+                                        </button>
+                                    </nav>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             {/* Create/Edit Modal */}
             {showModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                             <h3 className="text-xl font-bold text-gray-900">
@@ -606,7 +608,7 @@ export function PermissionsManagement() {
 
             {/* View Modal */}
             {showViewModal && permissionToView && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
                         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                             <h3 className="text-xl font-bold text-gray-900">
@@ -625,101 +627,54 @@ export function PermissionsManagement() {
                                 <label className="text-xs font-bold text-gray-400 uppercase tracking-wider">Permissions ({permissionToView.permissions.length})</label>
 
                                 {(() => {
-                                    // 1. Identify all unique actions across all permissions
-                                    const allActionsSet = new Set<string>();
-                                    // We need to scan all permissions first to find all possible actions
-                                    // But we also have a pre-defined list of common actions we might want to order first
-                                    const commonActions = ['view', 'create', 'edit', 'delete'];
+                                    if (!matrix) return <p className="text-gray-500 italic">Matrix data not available</p>;
 
-                                    permissionToView.permissions.forEach(p => {
-                                        if (!p.endsWith('.*')) {
+                                    const dynamicActions = matrix.actions;
+                                    const userPermissions = permissionToView.permissions || [];
+
+                                    // 1. Identify all modules and their submodules from the matrix
+                                    const allRows: { path: string; label: string; isSubmodule: boolean; parent?: string }[] = [];
+                                    const visiblePaths = new Set<string>();
+
+                                    matrix.modules.forEach(module => {
+                                        const modulePath = module;
+                                        const moduleWildcard = `${module}.*`;
+
+                                        // Find submodules for this module from matrix.permissions
+                                        const submoduleNames = new Set<string>();
+                                        matrix.permissions.forEach(p => {
                                             const parts = p.split('.');
-                                            if (parts.length >= 2) {
-                                                const action = parts[parts.length - 1];
-                                                allActionsSet.add(action);
+                                            if (parts.length === 3 && parts[0] === module) {
+                                                submoduleNames.add(parts[1]);
                                             }
+                                        });
+
+                                        const submodules: { path: string; label: string; isSubmodule: true; parent: string }[] = [];
+                                        let hasModulePermissions = userPermissions.some(p => p === moduleWildcard || p.startsWith(`${modulePath}.`));
+
+                                        Array.from(submoduleNames).sort().forEach(sub => {
+                                            const subPath = `${module}.${sub}`;
+                                            const subWildcard = `${subPath}.*`;
+                                            const hasSubPermissions = userPermissions.some(p => p === moduleWildcard || p === subWildcard || p.startsWith(`${subPath}.`));
+
+                                            if (hasSubPermissions) {
+                                                submodules.push({
+                                                    path: subPath,
+                                                    label: sub.charAt(0).toUpperCase() + sub.slice(1),
+                                                    isSubmodule: true,
+                                                    parent: module
+                                                });
+                                                hasModulePermissions = true; // Show parent if child has permissions
+                                            }
+                                        });
+
+                                        if (hasModulePermissions) {
+                                            allRows.push({ path: modulePath, label: module.charAt(0).toUpperCase() + module.slice(1), isSubmodule: false });
+                                            submodules.forEach(sm => allRows.push(sm));
                                         }
                                     });
 
-                                    // Create a sorted list of actions for columns
-                                    // Put common actions first in specific order, then others alphabetically
-                                    const dynamicActions = Array.from(allActionsSet).sort((a, b) => {
-                                        const indexA = commonActions.indexOf(a);
-                                        const indexB = commonActions.indexOf(b);
-                                        if (indexA !== -1 && indexB !== -1) return indexA - indexB;
-                                        if (indexA !== -1) return -1;
-                                        if (indexB !== -1) return 1;
-                                        return a.localeCompare(b);
-                                    });
-
-                                    // If no actions found (e.g. only wildcards or empty), fallback to common defaults
-                                    if (dynamicActions.length === 0) {
-                                        dynamicActions.push(...commonActions);
-                                    }
-
-                                    // 2. Group permissions by module and submodule
-                                    const moduleMap: Record<string, { actions: Record<string, boolean>; hasWildcard: boolean; isSubmodule: boolean }> = {};
-
-                                    permissionToView.permissions.forEach(p => {
-                                        const parts = p.split('.');
-                                        let modulePath = '';
-                                        let action = '';
-                                        let isSubmodule = false;
-                                        // Handle wildcard
-                                        if (p.endsWith('.*')) {
-                                            modulePath = p.slice(0, -2); // Remove .*
-                                            action = '*';
-                                            const moduleParts = modulePath.split('.');
-                                            if (moduleParts.length > 1) {
-                                                isSubmodule = true;
-                                            }
-                                        } else {
-                                            if (parts.length >= 2) {
-                                                action = parts[parts.length - 1];
-                                                modulePath = parts.slice(0, -1).join('.');
-                                                if (parts.length > 2) {
-                                                    isSubmodule = true;
-                                                }
-                                            }
-                                        }
-
-                                        if (!modulePath) return;
-
-                                        // Ensure entry exists
-                                        if (!moduleMap[modulePath]) {
-                                            moduleMap[modulePath] = { actions: {}, hasWildcard: false, isSubmodule };
-                                        }
-
-                                        // Ensure parent exists if submodule
-                                        if (isSubmodule) {
-                                            const parentModule = modulePath.split('.')[0];
-                                            if (!moduleMap[parentModule]) {
-                                                moduleMap[parentModule] = { actions: {}, hasWildcard: false, isSubmodule: false };
-                                            }
-                                        }
-
-                                        if (action === '*') {
-                                            moduleMap[modulePath].hasWildcard = true;
-                                            dynamicActions.forEach(act => {
-                                                moduleMap[modulePath].actions[act] = true;
-                                            });
-                                        } else {
-                                            moduleMap[modulePath].actions[action] = true;
-                                        }
-                                    });
-
-                                    // Sort entries
-                                    const sortedEntries = Object.entries(moduleMap).sort(([pathA], [pathB]) => {
-                                        const partsA = pathA.split('.');
-                                        const partsB = pathB.split('.');
-
-                                        if (partsA.length !== partsB.length) {
-                                            if (partsA.length === 1 && partsB.length === 2 && partsB[0] === partsA[0]) return -1;
-                                            if (partsB.length === 1 && partsA.length === 2 && partsA[0] === partsB[0]) return 1;
-                                        }
-
-                                        return pathA.localeCompare(pathB);
-                                    });
+                                    if (allRows.length === 0) return <p className="text-center py-8 text-gray-500 font-medium">No permissions assigned yet</p>;
 
                                     return (
                                         <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -738,33 +693,38 @@ export function PermissionsManagement() {
                                                         </tr>
                                                     </thead>
                                                     <tbody className="bg-white divide-y divide-gray-200">
-                                                        {sortedEntries.map(([modulePath, data]) => {
-                                                            const parts = modulePath.split('.');
-                                                            const displayName = data.isSubmodule
-                                                                ? parts[parts.length - 1].charAt(0).toUpperCase() + parts[parts.length - 1].slice(1)
-                                                                : parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
-
+                                                        {allRows.map((row) => {
                                                             return (
-                                                                <tr key={modulePath} className="hover:bg-gray-50">
-                                                                    <td className={`px-4 py-3 text-sm font-bold text-gray-900 sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] ${data.isSubmodule ? 'pl-8' : ''}`}>
-                                                                        {data.isSubmodule && (
+                                                                <tr key={row.path} className="hover:bg-gray-50">
+                                                                    <td className={`px-4 py-3 text-sm font-bold text-gray-900 sticky left-0 bg-white z-10 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] ${row.isSubmodule ? 'pl-8' : ''}`}>
+                                                                        {row.isSubmodule && (
                                                                             <span className="mr-2 text-gray-400">└─</span>
                                                                         )}
-                                                                        {displayName}
+                                                                        {row.label}
                                                                     </td>
-                                                                    {dynamicActions.map(action => (
-                                                                        <td key={action} className="px-4 py-3 text-center">
-                                                                            {(data.actions[action] || data.hasWildcard) ? (
-                                                                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600">
-                                                                                    ✓
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-400">
-                                                                                    -
-                                                                                </span>
-                                                                            )}
-                                                                        </td>
-                                                                    ))}
+                                                                    {dynamicActions.map(action => {
+                                                                        const permissionPath = `${row.path}.${action}`;
+                                                                        const moduleWildcard = `${row.path.split('.')[0]}.*`;
+                                                                        const submoduleWildcard = row.isSubmodule ? `${row.path}.*` : null;
+
+                                                                        const isAllowed = userPermissions.includes(permissionPath) ||
+                                                                            userPermissions.includes(moduleWildcard) ||
+                                                                            (submoduleWildcard && userPermissions.includes(submoduleWildcard));
+
+                                                                        return (
+                                                                            <td key={action} className="px-4 py-3 text-center">
+                                                                                {isAllowed ? (
+                                                                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-600">
+                                                                                        ✓
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-300">
+                                                                                        -
+                                                                                    </span>
+                                                                                )}
+                                                                            </td>
+                                                                        );
+                                                                    })}
                                                                 </tr>
                                                             );
                                                         })}
@@ -801,6 +761,6 @@ export function PermissionsManagement() {
                     </div>
                 </div>
             )}
-        </div>
+        </>
     );
 }
