@@ -142,7 +142,7 @@ export function PermissionsManagement() {
             return user ? `${user.name} (${user.email})` : `User ID: ${effectiveUserId}`;
         }
 
-        return 'Not Assigned';
+        return 'Unassigned (System/Role)';
     };
 
     const handleOpenCreateModal = () => {
@@ -225,13 +225,13 @@ export function PermissionsManagement() {
 
     const formatPermissionLabel = (permission: string): string => {
         if (permission.endsWith('.*')) {
-            // Handle wildcards: "profile.*" -> "All Profile Actions"
+            // Handle wildcards: "profile.*" -> "Profile: All Actions"
             const parts = permission.slice(0, -2).split('.');
             const moduleName = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
-            return `All ${moduleName} Actions`;
+            return `${moduleName}: All Actions`;
         }
 
-        // Handle regular permissions: "settings.view" -> "Settings - View"
+        // Handle regular permissions: "settings.view" -> "Settings: View"
         const parts = permission.split('.');
         const action = parts[parts.length - 1];
         const modulePath = parts.slice(0, -1);
@@ -239,7 +239,7 @@ export function PermissionsManagement() {
         const moduleLabel = modulePath.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
         const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
 
-        return `${moduleLabel} - ${actionLabel}`;
+        return `${moduleLabel}: ${actionLabel}`;
     };
 
     return (
@@ -372,16 +372,42 @@ export function PermissionsManagement() {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex flex-wrap gap-1">
-                                                    {permission.permissions.slice(0, 3).map(p => (
-                                                        <span key={p} className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs rounded-md font-bold">
-                                                            {formatPermissionLabel(p)}
-                                                        </span>
-                                                    ))}
-                                                    {permission.permissions.length > 3 && (
-                                                        <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-md font-bold">
-                                                            +{permission.permissions.length - 3} more
-                                                        </span>
-                                                    )}
+                                                    {(() => {
+                                                        // Group permissions by module for display
+                                                        const groupedPermissions: Record<string, string[]> = {};
+                                                        permission.permissions.forEach(p => {
+                                                            const parts = p.split('.');
+                                                            const module = parts[0];
+                                                            if (!groupedPermissions[module]) groupedPermissions[module] = [];
+                                                            groupedPermissions[module].push(p);
+                                                        });
+
+                                                        const modules = Object.keys(groupedPermissions);
+                                                        const displayModules = modules.slice(0, 3);
+
+                                                        return (
+                                                            <>
+                                                                {displayModules.map(module => {
+                                                                    const perms = groupedPermissions[module];
+                                                                    const hasWildcard = perms.some(p => p.endsWith('.*'));
+                                                                    const label = hasWildcard
+                                                                        ? `${module.charAt(0).toUpperCase() + module.slice(1)}: All`
+                                                                        : `${module.charAt(0).toUpperCase() + module.slice(1)}: ${perms.length}`;
+
+                                                                    return (
+                                                                        <span key={module} className="px-2 py-0.5 bg-indigo-100 text-indigo-800 text-xs rounded-md font-bold">
+                                                                            {label}
+                                                                        </span>
+                                                                    );
+                                                                })}
+                                                                {modules.length > 3 && (
+                                                                    <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded-md font-bold">
+                                                                        +{modules.length - 3} modules
+                                                                    </span>
+                                                                )}
+                                                            </>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-gray-500">
