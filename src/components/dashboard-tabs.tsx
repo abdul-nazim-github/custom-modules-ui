@@ -491,8 +491,8 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
 
                         <div className="space-y-6">
                             {/* User List Table */}
-                            <div className="overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
-                                <div className="overflow-x-auto min-h-[580px]">
+                            <div className="rounded-2xl border border-gray-100 shadow-sm overflow-visible">
+                                <div className="overflow-x-auto overflow-y-visible min-h-[580px]">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-100">
                                             <tr>
@@ -527,6 +527,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                     </div>
                                                 </th>
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Role</th>
+                                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Permissions</th>
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider text-center">Actions</th>
                                             </tr>
                                         </thead>
@@ -548,7 +549,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                 </tr>
                                             ) : (
                                                 users.map((user) => (
-                                                    <tr key={user.id || user._id} className="hover:bg-gray-50/50 transition-colors group">
+                                                    <tr key={user.id || user._id} className="hover:bg-gray-50/50 transition-colors group relative hover:z-[100]">
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <div className="font-bold text-gray-900">{user.name}</div>
                                                         </td>
@@ -564,6 +565,36 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                                 }`}>
                                                                 {user.role}
                                                             </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 relative">
+                                                            <div className="flex flex-wrap gap-1 max-w-xs">
+                                                                {getUserPermissions(user).length > 0 ? (
+                                                                    getUserPermissions(user).slice(0, 3).map((perm, idx) => (
+                                                                        <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                                                                            {PERMISSION_LABELS[perm as Permission] || perm.split('~').pop() || perm}
+                                                                        </span>
+                                                                    ))
+                                                                ) : (
+                                                                    <span className="text-xs text-gray-400 italic">No permissions</span>
+                                                                )}
+                                                                {getUserPermissions(user).length > 3 && (
+                                                                    <div className="relative group/tooltip">
+                                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                                                            +{getUserPermissions(user).length - 3} more
+                                                                        </span>
+                                                                        <div className="absolute bottom-full left-0 mb-2 hidden group-hover/tooltip:block w-48 p-2 bg-gray-900 text-white text-[10px] rounded-lg shadow-xl z-[110]">
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {getUserPermissions(user).slice(3).map((perm, idx) => (
+                                                                                    <span key={idx} className="px-1.5 py-0.5 bg-gray-800 rounded whitespace-nowrap">
+                                                                                        {PERMISSION_LABELS[perm as Permission] || perm.split('~').pop() || perm}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                            <div className="absolute top-full left-4 border-8 border-transparent border-t-gray-900"></div>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-center">
                                                             <div className="flex justify-center items-center space-x-2">
