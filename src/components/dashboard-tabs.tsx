@@ -98,8 +98,8 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     const [currentPage, setCurrentPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [totalUsers, setTotalUsers] = useState(0);
-    const [sortField, setSortField] = useState<string>('name');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [sortBy, setSortBy] = useState<string>('name');
+    const [order, setOrder] = useState<'asc' | 'desc'>('asc');
 
     // Edit User State
     const [showEditUserModal, setShowEditUserModal] = useState(false);
@@ -185,8 +185,8 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                 params: {
                     page,
                     limit: currentLimit,
-                    sortField,
-                    sortOrder
+                    sortBy,
+                    order
                 }
             });
             if (response.data.success) {
@@ -204,10 +204,10 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     };
 
     useEffect(() => {
-        if (activeTab === 'users' && users.length === 0) {
+        if (activeTab === 'users') {
             fetchUsers();
         }
-    }, [activeTab]);
+    }, [activeTab, currentPage, limit, sortBy, order]);
 
     const handleEditClick = (user: UserData) => {
         setEditingUser({ id: user.id || user._id || '', name: user.name, email: user.email });
@@ -499,30 +499,30 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                 <th
                                                     className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
                                                     onClick={() => {
-                                                        const newOrder = sortField === 'name' && sortOrder === 'asc' ? 'desc' : 'asc';
-                                                        setSortField('name');
-                                                        setSortOrder(newOrder);
+                                                        const newOrder = sortBy === 'name' && order === 'asc' ? 'desc' : 'asc';
+                                                        setSortBy('name');
+                                                        setOrder(newOrder);
                                                     }}
                                                 >
                                                     <div className="flex items-center space-x-1">
                                                         <span>Name</span>
-                                                        {sortField === 'name' && (
-                                                            <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                                        {sortBy === 'name' && (
+                                                            <span>{order === 'asc' ? '↑' : '↓'}</span>
                                                         )}
                                                     </div>
                                                 </th>
                                                 <th
                                                     className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
                                                     onClick={() => {
-                                                        const newOrder = sortField === 'email' && sortOrder === 'asc' ? 'desc' : 'asc';
-                                                        setSortField('email');
-                                                        setSortOrder(newOrder);
+                                                        const newOrder = sortBy === 'email' && order === 'asc' ? 'desc' : 'asc';
+                                                        setSortBy('email');
+                                                        setOrder(newOrder);
                                                     }}
                                                 >
                                                     <div className="flex items-center space-x-1">
                                                         <span>Email</span>
-                                                        {sortField === 'email' && (
-                                                            <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                                        {sortBy === 'email' && (
+                                                            <span>{order === 'asc' ? '↑' : '↓'}</span>
                                                         )}
                                                     </div>
                                                 </th>
