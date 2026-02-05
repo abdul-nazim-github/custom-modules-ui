@@ -550,7 +550,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                 {activeTab === 'users' && (
                     <div className="p-8 transition-all duration-500 opacity-100 translate-y-0">
                         <div className="flex justify-between items-center mb-8">
-                            <h2 className="text-2xl font-bold text-gray-900">User Management 1</h2>
+                            <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
                             <div className="flex items-center space-x-4">
                                 <div className="flex items-center space-x-2">
                                     <span className="text-sm text-gray-500 font-medium">Show:</span>
