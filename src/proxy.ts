@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const token = request.cookies.get('accessToken')?.value;
   const { pathname } = request.nextUrl;
 
@@ -17,8 +17,7 @@ export function middleware(request: NextRequest) {
 
   // If user is NOT authenticated and tries to access a protected route
   if (!token && !isPublicRoute) {
-      // Allow access to API routes (except auth ones if needed, but usually API is protected differently or by this same middleware)
-      // We should probably exclude /api/auth from this check or handle it specifically
+      // Allow access to API routes (except auth ones if needed, but usually API is protected differently or by this same proxy)
       if (pathname.startsWith('/api/auth') || pathname.startsWith('/api/contact')) {
           return NextResponse.next();
       }

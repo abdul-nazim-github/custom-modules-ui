@@ -392,8 +392,8 @@ export function RolesManagement() {
             </div>
 
             {showModal && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                <div className="fixed inset-0 z-[9999] flex items-start justify-center py-8 px-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-3xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[calc(100vh-4rem)]">
                         <div className="p-6 border-b border-gray-100 flex justify-between items-center flex-none">
                             <h3 className="text-xl font-bold text-gray-900">
                                 {isEditing ? 'Edit Role' : 'Create Role'}
@@ -516,7 +516,7 @@ export function RolesManagement() {
                                 </div>
                             )}
                         </div>
-                        <div className="p-6 bg-gray-50 flex justify-end space-x-3 border-t border-gray-100 flex-none">
+                        <div className="p-6 bg-gray-50 flex justify-end space-x-3 border-t border-gray-100 flex-none sticky bottom-0">
                             <button
                                 onClick={() => setShowModal(false)}
                                 className="px-6 py-2.5 text-sm font-bold text-gray-700 hover:bg-gray-200 rounded-xl transition-colors"
