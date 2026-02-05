@@ -51,7 +51,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'security', label: 'Security', icon: Shield, permission: Permission.SECURITY },
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
         { id: 'permissions-mgmt', label: 'Permissions Management', icon: Shield },
-        { id: 'content', label: 'Content', icon: FileText },
+        { id: 'content', label: 'CMS', icon: FileText },
     ];
 
     const tabs = allTabs.filter((tab: { id: string; label: string; icon: LucideIcon; permission?: Permission; role?: Role }) => {
