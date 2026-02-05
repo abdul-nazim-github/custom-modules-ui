@@ -14,7 +14,6 @@ export async function PUT(
     const accessToken = cookieStore.get('accessToken')?.value;
 
     if (!accessToken) {
-      console.error(`API Route: /api/auth/users/${id}/role - No access token found in cookies`);
       return NextResponse.json(
         { message: 'Unauthorized: No access token', success: false },
         { status: 401 }
@@ -22,41 +21,36 @@ export async function PUT(
     }
 
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
-    const fullBackendUrl = `${backendUrl}/auth/users/${id}/role`;
 
     try {
-      const response = await axios.put(
-        fullBackendUrl,
-        body,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          }
+      const response = await axios.put(`${backendUrl}/auth/users/${id}/role`, body, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
         }
-      );
+      });
+
       return NextResponse.json(response.data);
     } catch (backendError: unknown) {
       if (axios.isAxiosError(backendError)) {
-        console.error('Backend role update error status:', backendError.response?.status);
-        console.error('Backend role update error message:', backendError.response?.data?.message || backendError.message);
+        console.error('Backend update role error status:', backendError.response?.status);
+        console.error('Backend update role error message:', backendError.response?.data?.message || backendError.message);
+        return NextResponse.json(
+            { message: backendError.response?.data?.message || 'Failed to update role', success: false },
+            { status: backendError.response?.status || 500 }
+        );
       } else {
-        console.error('Backend role update error:', backendError);
+        console.error('Backend update role error:', backendError);
       }
       throw backendError;
     }
-
   } catch (error: unknown) {
-    console.error('Role update error:', error);
+    console.error('Update role error:', error);
     const message = getErrorMessage(error);
-    let status = 500;
-    if (axios.isAxiosError(error) && error.response) {
-      status = error.response.status;
-    }
 
     return NextResponse.json(
       { message: message || 'Internal Server Error', success: false },
-      { status }
+      { status: 500 }
     );
   }
 }

@@ -5,8 +5,6 @@ import { User, Settings, Activity, Mail, Shield, Bell, Users, Trash2, Edit2, Use
 import api from '@/lib/axios';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { PermissionsManagement } from './permissions-management';
-import { RolesManagement } from './roles-management';
 import { ContentManagement } from './content-management';
 import { validatePassword, generatePassword } from '@/lib/validation';
 import { PasswordChecklist } from './password-checklist';
@@ -63,8 +61,6 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'security', label: 'Security', icon: Shield, permission: Permission.SECURITY },
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
         { id: 'users', label: 'Users', icon: Users },
-        { id: 'permissions-mgmt', label: 'Permissions Management', icon: Shield },
-        { id: 'roles', label: 'Role Management', icon: Shield },
         { id: 'content', label: 'Content', icon: FileText },
         { id: 'contact', label: 'Contact Request Entries', icon: Mail, permission: Permission.CONTACT_FORM },
     ];
@@ -73,14 +69,6 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         if (tab.id === 'users') {
             return role === Role.SUPER_ADMIN ||
                 permissions.includes(Permission.MANAGE_USERS) ||
-                permissions.includes(Permission.MANAGE_PERMISSIONS);
-        }
-        if (tab.id === 'permissions-mgmt') {
-            return role === Role.SUPER_ADMIN ||
-                permissions.includes(Permission.MANAGE_PERMISSIONS);
-        }
-        if (tab.id === 'roles') {
-            return role === Role.SUPER_ADMIN ||
                 permissions.includes(Permission.MANAGE_PERMISSIONS);
         }
         if (tab.id === 'content') {
@@ -107,7 +95,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     const [totalUsers, setTotalUsers] = useState(0);
     const [sortField, setSortField] = useState<string>('name');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-    const [customPermissionInput, setCustomPermissionInput] = useState('');
+
 
     // Password Update State
     const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -128,9 +116,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         return user.permissions || [];
     };
 
-    const customPermissions = selectedPermissions.filter(
-        permission => !Object.values(Permission).includes(permission as Permission)
-    );
+
 
     const hasPermissionChanges = currentUser ? (
         selectedPermissions.length !== getUserPermissions(currentUser).length ||
@@ -205,18 +191,17 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             return;
         }
         setIsUpdating(true);
-        const loadingToast = toast.loading('Updating access...');
+        const loadingToast = toast.loading('Updating permissions...');
         try {
-            await api.put(`/api/users/${targetUserId}/updateAccess`, {
-                role: selectedRole,
-                custom_permissions: selectedPermissions
+            await api.put(`/api/auth/users/${targetUserId}/permissions`, {
+                permissions: selectedPermissions
             });
-            toast.success('Access updated successfully!', { id: loadingToast });
+            toast.success('Permissions updated successfully!', { id: loadingToast });
 
             // Immediate local state update for "immediate effect"
             setUsers(prevUsers => prevUsers.map(user =>
                 (user.id || user._id) === targetUserId
-                    ? { ...user, custom_permissions: [...selectedPermissions], role: selectedRole }
+                    ? { ...user, custom_permissions: [...selectedPermissions] } // Note: keeping state update logic consistent
                     : user
             ));
 
@@ -235,18 +220,17 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             return;
         }
         setIsUpdating(true);
-        const loadingToast = toast.loading('Updating access...');
+        const loadingToast = toast.loading('Updating role...');
         try {
-            await api.put(`/api/users/${targetUserId}/updateAccess`, {
-                role: selectedRole,
-                custom_permissions: selectedPermissions
+            await api.put(`/api/auth/users/${targetUserId}/role`, {
+                role: selectedRole
             });
-            toast.success('Access updated successfully!', { id: loadingToast });
+            toast.success('Role updated successfully!', { id: loadingToast });
 
             // Immediate local state update for "immediate effect"
             setUsers(prevUsers => prevUsers.map(user =>
                 (user.id || user._id) === targetUserId
-                    ? { ...user, role: selectedRole, custom_permissions: [...selectedPermissions] }
+                    ? { ...user, role: selectedRole }
                     : user
             ));
 
@@ -308,16 +292,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         );
     };
 
-    const handleAddCustomPermission = () => {
-        const trimmed = customPermissionInput.trim();
-        if (!trimmed) return;
-        setSelectedPermissions(prev => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
-        setCustomPermissionInput('');
-    };
 
-    const handleRemoveCustomPermission = (permission: string) => {
-        setSelectedPermissions(prev => prev.filter(p => p !== permission));
-    };
 
     const handlePasswordUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -638,41 +613,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                     </button>
                                                 ))}
                                             </div>
-                                            <div className="flex flex-col gap-2 mb-4">
-                                                <div className="flex gap-2">
-                                                    <input
-                                                        type="text"
-                                                        value={customPermissionInput}
-                                                        onChange={(e) => setCustomPermissionInput(e.target.value)}
-                                                        placeholder="Add custom permission (e.g. closetab.edit)"
-                                                        disabled={!canManagePermissions || isSelfEdit}
-                                                        className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                                    />
-                                                    <button
-                                                        type="button"
-                                                        onClick={handleAddCustomPermission}
-                                                        disabled={!customPermissionInput.trim() || !canManagePermissions || isSelfEdit}
-                                                        className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold"
-                                                    >
-                                                        Add
-                                                    </button>
-                                                </div>
-                                                {customPermissions.length > 0 && (
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {customPermissions.map(permission => (
-                                                            <button
-                                                                key={permission}
-                                                                type="button"
-                                                                onClick={() => handleRemoveCustomPermission(permission)}
-                                                                disabled={!canManagePermissions || isSelfEdit}
-                                                                className="px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                                                            >
-                                                                {permission}
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
+
                                             <button
                                                 onClick={handleUpdatePermissions}
                                                 disabled={isUpdating || !targetUserId || !hasPermissionChanges || isSelfEdit || !canManagePermissions}
@@ -908,13 +849,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                     </div>
                 )}
 
-                {activeTab === 'permissions-mgmt' && (
-                    <PermissionsManagement />
-                )}
 
-                {activeTab === 'roles' && (
-                    <RolesManagement />
-                )}
 
                 {activeTab === 'content' && (
                     <ContentManagement />

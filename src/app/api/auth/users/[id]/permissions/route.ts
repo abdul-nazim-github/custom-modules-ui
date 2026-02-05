@@ -21,41 +21,36 @@ export async function PUT(
     }
 
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
-    const fullBackendUrl = `${backendUrl}/auth/users/${id}/permissions`;
 
     try {
-      const response = await axios.put(
-        fullBackendUrl,
-        body,
-        {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'Content-Type': 'application/json'
-          }
+      const response = await axios.put(`${backendUrl}/auth/users/${id}/permissions`, body, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
         }
-      );
+      });
+
       return NextResponse.json(response.data);
     } catch (backendError: unknown) {
       if (axios.isAxiosError(backendError)) {
-        console.error('Backend permission update error status:', backendError.response?.status);
-        console.error('Backend permission update error message:', backendError.response?.data?.message || backendError.message);
+        console.error('Backend update permissions error status:', backendError.response?.status);
+        console.error('Backend update permissions error message:', backendError.response?.data?.message || backendError.message);
+        return NextResponse.json(
+            { message: backendError.response?.data?.message || 'Failed to update permissions', success: false },
+            { status: backendError.response?.status || 500 }
+        );
       } else {
-        console.error('Backend permission update error:', backendError);
+        console.error('Backend update permissions error:', backendError);
       }
       throw backendError;
     }
-
   } catch (error: unknown) {
-    console.error('Permission update error:', error);
+    console.error('Update permissions error:', error);
     const message = getErrorMessage(error);
-    let status = 500;
-    if (axios.isAxiosError(error) && error.response) {
-      status = error.response.status;
-    }
 
     return NextResponse.json(
       { message: message || 'Internal Server Error', success: false },
-      { status }
+      { status: 500 }
     );
   }
 }
