@@ -9,7 +9,6 @@ import { PermissionsManagement } from './permissions-management';
 import { ContentManagement } from './content-management';
 import { validatePassword, generatePassword } from '@/lib/validation';
 import { PasswordChecklist } from './password-checklist';
-import { ContactList } from './contact-list';
 import { Input } from './ui/input';
 
 export enum Role {
@@ -25,7 +24,6 @@ export enum Permission {
     SECURITY = 'modules~permission~security',
     MANAGE_USERS = 'modules~permission~manage_users',
     MANAGE_PERMISSIONS = 'modules~permission~manage_permissions',
-    CONTACT_FORM = 'modules~permission~contact_form',
 }
 
 const PERMISSION_LABELS: Record<Permission, string> = {
@@ -35,7 +33,6 @@ const PERMISSION_LABELS: Record<Permission, string> = {
     [Permission.SECURITY]: 'Security',
     [Permission.MANAGE_USERS]: 'Manage Users',
     [Permission.MANAGE_PERMISSIONS]: 'Manage Permissions',
-    [Permission.CONTACT_FORM]: 'Contact Form',
 };
 
 
@@ -54,8 +51,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'security', label: 'Security', icon: Shield, permission: Permission.SECURITY },
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
         { id: 'permissions-mgmt', label: 'Permissions Management', icon: Shield },
-        { id: 'content', label: 'Content', icon: FileText },
-        { id: 'contact', label: 'Contact Request Entries', icon: Mail, permission: Permission.CONTACT_FORM },
+        { id: 'content', label: 'CMS', icon: FileText },
     ];
 
     const tabs = allTabs.filter((tab: { id: string; label: string; icon: LucideIcon; permission?: Permission; role?: Role }) => {
@@ -303,10 +299,6 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
 
                 {activeTab === 'content' && (
                     <ContentManagement />
-                )}
-
-                {activeTab === 'contact' && (
-                    <ContactList />
                 )}
             </div>
 

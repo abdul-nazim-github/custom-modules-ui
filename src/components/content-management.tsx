@@ -263,34 +263,14 @@ export function ContentManagement() {
                                         )}
                                     </div>
                                 </th>
-                                <th
-                                    className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
-                                    onClick={() => {
-                                        const newOrder = sortField === 'shortDescription' && sortOrder === 'asc' ? 'desc' : 'asc';
-                                        setSortField('shortDescription');
-                                        setSortOrder(newOrder);
-                                    }}
-                                >
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                     <div className="flex items-center space-x-1">
                                         <span>Description</span>
-                                        {sortField === 'shortDescription' && (
-                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                                        )}
                                     </div>
                                 </th>
-                                <th
-                                    className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
-                                    onClick={() => {
-                                        const newOrder = sortField === 'status' && sortOrder === 'asc' ? 'desc' : 'asc';
-                                        setSortField('status');
-                                        setSortOrder(newOrder);
-                                    }}
-                                >
+                                <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">
                                     <div className="flex items-center space-x-1">
                                         <span>Status</span>
-                                        {sortField === 'status' && (
-                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
-                                        )}
                                     </div>
                                 </th>
                                 <th
@@ -572,18 +552,18 @@ export function ContentManagement() {
             {/* Delete Confirmation Modal */}
             {showDeleteModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-6">
-                            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-4">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="p-6 overflow-y-auto">
+                            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-4 shrink-0">
                                 <Trash2 size={24} />
                             </div>
                             <h3 className="text-xl font-bold text-gray-900 mb-2">Delete Content</h3>
-                            <p className="text-gray-500">
+                            <p className="text-gray-500 break-words">
                                 Are you sure you want to delete <span className="font-bold text-gray-900">{contentToDelete?.title}</span>?
                                 This action cannot be undone.
                             </p>
                         </div>
-                        <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
+                        <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3 shrink-0">
                             <button
                                 onClick={() => setShowDeleteModal(false)}
                                 className="px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-200 rounded-xl transition-colors"
@@ -646,7 +626,7 @@ export function ContentManagement() {
                                     <p className="text-sm text-gray-600">
                                         {(() => {
                                             const date = contentToView.updated_at || contentToView.updatedAt || contentToView.created_at || contentToView.createdAt;
-                                            return date ? new Date(date).toLocaleString() : 'N/A';
+                                            return date ? new Date(date).toLocaleDateString() : 'N/A';
                                         })()}
                                     </p>
                                 </div>
