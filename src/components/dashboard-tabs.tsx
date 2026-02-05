@@ -5,7 +5,6 @@ import { User, Settings, Activity, Mail, Shield, Bell, Users, Trash2, Edit2, Use
 import api from '@/lib/axios';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import { ContentManagement } from './content-management';
 import { validatePassword, generatePassword } from '@/lib/validation';
 import { PasswordChecklist } from './password-checklist';
 import { ContactList } from './contact-list';
@@ -61,7 +60,6 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'security', label: 'Security', icon: Shield, permission: Permission.SECURITY },
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
         { id: 'users', label: 'Users', icon: Users },
-        { id: 'content', label: 'Content', icon: FileText },
         { id: 'contact', label: 'Contact Request Entries', icon: Mail, permission: Permission.CONTACT_FORM },
     ];
 
@@ -70,9 +68,6 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             return role === Role.SUPER_ADMIN ||
                 permissions.includes(Permission.MANAGE_USERS) ||
                 permissions.includes(Permission.MANAGE_PERMISSIONS);
-        }
-        if (tab.id === 'content') {
-            return true;
         }
         return (tab.permission && permissions.includes(tab.permission)) ||
             (tab.role && role === tab.role);
@@ -95,6 +90,12 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     const [totalUsers, setTotalUsers] = useState(0);
     const [sortField, setSortField] = useState<string>('name');
     const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+    // Edit User State
+    const [showEditUserModal, setShowEditUserModal] = useState(false);
+    const [editingUser, setEditingUser] = useState<{ id: string, name: string, email: string } | null>(null);
+    const [editFormData, setEditFormData] = useState({ name: '' });
+    const [isUpdatingUser, setIsUpdatingUser] = useState(false);
 
 
     // Password Update State
@@ -283,6 +284,40 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         } finally {
             setIsDeleting(false);
             abortControllerRef.current = null;
+        }
+    };
+
+    const handleEditClick = (user: UserData) => {
+        setEditingUser({ id: user.id || user._id || '', name: user.name, email: user.email });
+        setEditFormData({ name: user.name });
+        setShowEditUserModal(true);
+    };
+
+    const handleUpdateUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!editingUser) return;
+
+        if (!editFormData.name) {
+            toast.error('Name is required');
+            return;
+        }
+
+        setIsUpdatingUser(true);
+        const loadingToast = toast.loading('Updating user...');
+
+        try {
+            await api.put(`/api/auth/users/${editingUser.id}`, {
+                name: editFormData.name
+            });
+            toast.success('User updated successfully!', { id: loadingToast });
+            setShowEditUserModal(false);
+            setEditingUser(null);
+            fetchUsers(); // Refresh list to show updated data
+        } catch (error) {
+            console.error('Update user error:', error);
+            toast.error('Failed to update user', { id: loadingToast });
+        } finally {
+            setIsUpdatingUser(false);
         }
     };
 
@@ -545,95 +580,11 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            {/* Management Section */}
-                            <div className="lg:col-span-1 space-y-6">
-                                <div className="p-6 rounded-2xl bg-gray-50 border border-gray-100">
-                                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
-                                        <Users className="mr-2 text-indigo-600" size={20} />
-                                        Manage User
-                                    </h3>
-                                    <div className="space-y-6">
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-800 mb-2">Select User</label>
-                                            <select
-                                                value={targetUserId}
-                                                onChange={(e) => handleUserSelect(e.target.value)}
-                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium"
-                                            >
-                                                {users.length === 0 && <option value="">No users found</option>}
-                                                {users.map(user => (
-                                                    <option key={user.id || user._id} value={user.id || user._id || ''}>
-                                                        {user.email} ({user.name})
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
+                        <div className="space-y-6">
 
-                                        {/* Role Update */}
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-800 mb-2">Update Role</label>
-                                            <div className="flex space-x-2">
-                                                <select
-                                                    value={selectedRole}
-                                                    onChange={(e) => setSelectedRole(e.target.value as Role)}
-                                                    disabled={!canManageUsers || isSelfEdit}
-                                                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    <option value={Role.USER}>User</option>
-                                                    <option value={Role.ADMIN}>Admin</option>
-                                                    <option value={Role.SUPER_ADMIN}>Super Admin</option>
-                                                </select>
-                                                <button
-                                                    onClick={handleUpdateRole}
-                                                    disabled={isUpdating || !targetUserId || !hasRoleChanges || isSelfEdit || !canManageUsers}
-                                                    className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-100"
-                                                    title={!canManageUsers ? "You don't have permission to manage roles" : (isSelfEdit ? "You cannot update your own role" : (hasRoleChanges ? "Update Role" : "No changes to role"))}
-                                                >
-                                                    <UserCheck size={20} />
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        {/* Permissions Update */}
-                                        <div>
-                                            <label className="block text-sm font-bold text-gray-800 mb-2">Manage Permissions</label>
-                                            <div className="grid grid-cols-1 gap-2 mb-4">
-                                                {Object.values(Permission).map((perm) => (
-                                                    <button
-                                                        key={perm}
-                                                        onClick={() => togglePermission(perm)}
-                                                        disabled={!canManagePermissions || isSelfEdit}
-                                                        className={`px-4 py-2 text-left text-xs font-bold rounded-lg border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${selectedPermissions.includes(perm)
-                                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                                                            : 'bg-white text-gray-800 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
-                                                            }`}
-                                                    >
-                                                        {PERMISSION_LABELS[perm]}
-                                                    </button>
-                                                ))}
-                                            </div>
-
-                                            <button
-                                                onClick={handleUpdatePermissions}
-                                                disabled={isUpdating || !targetUserId || !hasPermissionChanges || isSelfEdit || !canManagePermissions}
-                                                className="w-full py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold shadow-lg shadow-indigo-200 flex items-center justify-center space-x-2"
-                                                title={!canManagePermissions ? "You don't have permission to manage permissions" : (isSelfEdit ? "You cannot update your own permissions" : (hasPermissionChanges ? "Update Permissions" : "No changes to permissions"))}
-                                            >
-                                                {isUpdating ? (
-                                                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                ) : (
-                                                    <Shield size={18} />
-                                                )}
-                                                <span>Update Permissions</span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
 
                             {/* User List Table */}
-                            <div className="lg:col-span-2 overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
+                            <div className="overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
                                 <div className="overflow-x-auto min-h-[580px]">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-100">
@@ -744,12 +695,14 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                         <div className="flex justify-end space-x-2">
                                                             <button
-                                                                onClick={() => handleUserSelect(user.id || user._id || '')}
-                                                                className="p-2 text-gray-500 hover:text-indigo-600 transition-colors"
-                                                                title="Edit User"
+                                                                onClick={() => handleEditClick(user)}
+                                                                disabled={user.email === userEmail}
+                                                                className="p-2 text-gray-500 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                                                title={user.email === userEmail ? "You cannot edit your own details here" : "Edit User"}
                                                             >
                                                                 <Edit2 size={16} />
                                                             </button>
+
                                                             <button
                                                                 onClick={() => handleDeleteUser(user.id || user._id || '', user.name)}
                                                                 disabled={user.email === userEmail || !canDeleteUsers}
@@ -851,9 +804,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
 
 
 
-                {activeTab === 'content' && (
-                    <ContentManagement />
-                )}
+
 
                 {activeTab === 'contact' && (
                     <ContactList />
@@ -1068,6 +1019,65 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                     </div>
                 </div>
             )}
+
+            {/* Edit User Modal */}
+            {showEditUserModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                            <h3 className="text-xl font-bold text-gray-900 flex items-center">
+                                <div className="p-2 bg-indigo-100 rounded-lg text-indigo-600 mr-3">
+                                    <Edit2 size={20} />
+                                </div>
+                                Edit User
+                            </h3>
+                            <button
+                                onClick={() => setShowEditUserModal(false)}
+                                className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-gray-100 rounded-lg"
+                            >
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleUpdateUser} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Name</label>
+                                <Input
+                                    value={editFormData.name}
+                                    onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                                    placeholder="User Name"
+                                    className="w-full"
+                                />
+                            </div>
+                            <div className="flex justify-end space-x-3 pt-4">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowEditUserModal(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 focus:ring-2 focus:ring-offset-2 focus:ring-gray-200 transition-all"
+                                    disabled={isUpdatingUser}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isUpdatingUser}
+                                    className="px-4 py-2 text-sm font-bold text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-200 flex items-center"
+                                >
+                                    {isUpdatingUser ? (
+                                        <>
+                                            <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                                            Updating...
+                                        </>
+                                    ) : (
+                                        'Save Changes'
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }
