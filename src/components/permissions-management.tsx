@@ -207,14 +207,117 @@ export function PermissionsManagement() {
         setShowViewModal(true);
     };
 
-    const togglePermission = (permission: string) => {
-        setCurrentPermission(prev => {
-            const permissions = prev.permissions || [];
-            if (permissions.includes(permission)) {
-                return { ...prev, permissions: permissions.filter(p => p !== permission) };
-            } else {
-                return { ...prev, permissions: [...permissions, permission] };
+    const getAllConcretePermissions = (currentPermissions: string[], matrixData: PermissionMatrix): Set<string> => {
+        const concrete = new Set<string>();
+
+        // Helper to find all permissions matching a pattern
+        const findMatches = (pattern: string) => {
+            if (pattern.endsWith('.*')) {
+                const prefix = pattern.slice(0, -2);
+                return matrixData.permissions.filter(p => p.startsWith(prefix + '.') || p === pattern);
             }
+            return [pattern];
+        };
+
+        currentPermissions.forEach(p => {
+            if (p.endsWith('.*')) {
+                // Expand wildcard
+                const prefix = p.slice(0, -2); // remove .*
+                // Find all matrix permissions that belong to this prefix
+                const matches = matrixData.permissions.filter(mp => mp.startsWith(prefix + '.'));
+                matches.forEach(m => concrete.add(m));
+            } else {
+                concrete.add(p);
+            }
+        });
+
+        return concrete;
+    };
+
+    const togglePermission = (target: string) => {
+        if (!matrix) return;
+
+        setCurrentPermission(prev => {
+            const currentList = prev.permissions || [];
+
+            // 1. Expand everything to concrete to make manipulation easier
+            const effectiveSet = getAllConcretePermissions(currentList, matrix);
+
+            // 2. Determine if we are selecting or deselecting the target
+            // If target is a wildcard, we treat it as a bulk operation
+            let isTargetActive = false;
+
+            if (target.endsWith('.*')) {
+                // For a wildcard target, check if ALL covered permissions are currently set
+                const prefix = target.slice(0, -2);
+                const coveredRules = matrix.permissions.filter(p => p.startsWith(prefix + '.'));
+                isTargetActive = coveredRules.length > 0 && coveredRules.every(r => effectiveSet.has(r));
+            } else {
+                isTargetActive = effectiveSet.has(target);
+            }
+
+            // 3. Perform the toggle on the Set
+            if (isTargetActive) {
+                // Deselect
+                if (target.endsWith('.*')) {
+                    const prefix = target.slice(0, -2);
+                    const toRemove = matrix.permissions.filter(p => p.startsWith(prefix + '.'));
+                    toRemove.forEach(p => effectiveSet.delete(p));
+                } else {
+                    effectiveSet.delete(target);
+                }
+            } else {
+                // Select
+                if (target.endsWith('.*')) {
+                    const prefix = target.slice(0, -2);
+                    const toAdd = matrix.permissions.filter(p => p.startsWith(prefix + '.'));
+                    toAdd.forEach(p => effectiveSet.add(p));
+                } else {
+                    effectiveSet.add(target);
+                }
+            }
+
+            // 4. Re-collapse logic
+            // We want to store the minimal set of rules (using wildcards where possible)
+            const finalPermissions: string[] = [];
+            const tempSet = new Set(effectiveSet); // Copy to consume
+
+            // Check each Module for full coverage
+            matrix.modules.forEach(module => {
+                const modulePrefix = `${module}.`;
+                const allModulePermissions = matrix.permissions.filter(p => p.startsWith(modulePrefix));
+
+                if (allModulePermissions.length > 0 && allModulePermissions.every(p => tempSet.has(p))) {
+                    // Full module covered -> Add Module.*
+                    finalPermissions.push(`${module}.*`);
+                    // Remove these from tempSet so we don't double add
+                    allModulePermissions.forEach(p => tempSet.delete(p));
+                } else {
+                    // Check Submodules
+                    // Find submodules existing in this module
+                    const submodules = new Set<string>();
+                    allModulePermissions.forEach(p => {
+                        const parts = p.split('.');
+                        if (parts.length === 3) submodules.add(parts[1]);
+                    });
+
+                    submodules.forEach(sub => {
+                        const subPrefix = `${module}.${sub}.`;
+                        const allSubPermissions = allModulePermissions.filter(p => p.startsWith(subPrefix));
+
+                        if (allSubPermissions.length > 0 && allSubPermissions.every(p => tempSet.has(p))) {
+                            // Full submodule covered -> Add Module.Sub.*
+                            finalPermissions.push(`${module}.${sub}.*`);
+                            allSubPermissions.forEach(p => tempSet.delete(p));
+                        }
+                    });
+                }
+            });
+
+            // Add remaining individual permissions
+            tempSet.forEach(p => finalPermissions.push(p));
+
+            return { ...prev, permissions: finalPermissions };
         });
     };
 
@@ -240,6 +343,21 @@ export function PermissionsManagement() {
         const actionLabel = action.charAt(0).toUpperCase() + action.slice(1);
 
         return `${moduleLabel} - ${actionLabel}`;
+    };
+
+    // Helper to check if a permission is effectively checked (explicit or implicit)
+    const isPermissionChecked = (permission: string) => {
+        if (!currentPermission.permissions) return false;
+        if (currentPermission.permissions.includes(permission)) return true;
+
+        // Check for covering wildcards
+        const parts = permission.split('.');
+        // Check module.*
+        if (currentPermission.permissions.includes(`${parts[0]}.*`)) return true;
+        // Check module.submodule.*
+        if (parts.length === 3 && currentPermission.permissions.includes(`${parts[0]}.${parts[1]}.*`)) return true;
+
+        return false;
     };
 
     return (
@@ -535,7 +653,21 @@ export function PermissionsManagement() {
                                         });
 
                                         const wildcardPermission = `${module}.*`;
-                                        const hasWildcard = currentPermission.permissions?.includes(wildcardPermission);
+                                        const hasWildcard = isPermissionChecked(wildcardPermission);
+                                        // For "Select All" button state, we want to know if effectively everything is checked,
+                                        // which isPermissionChecked logic handles if wildcard is set, but we also want to show checked
+                                        // if all individual items are set (which auto-collapse logic handles).
+                                        // So simply checking if `wildcardPermission` is in our optimized list OR if logic says so.
+                                        // Actually `isPermissionChecked` returns true if coverage is complete via wildcard.
+                                        // But if we have mix of permissions that Equals full coverage, `isPermissionChecked` for wildcard might return false
+                                        // UNLESS we collapsed it. Our `togglePermission` DOES collapse.
+                                        // So `hasWildcard` checking explicit presence of wildcard is safest for "Visual Checkbox",
+                                        // BUT checking effective coverage is better UX?
+                                        // Let's rely on `isPermissionChecked` for now, but strictly speaking `togglePermission` ensures
+                                        // that if everything is checked, the Wildcard IS in the list.
+                                        // So `currentPermission.permissions.includes(wildcardPermission)` is the source of truth for "All Selected".
+
+                                        const isModuleFullySelected = currentPermission.permissions?.includes(wildcardPermission);
 
                                         return (
                                             <div key={module} className="p-4 bg-gray-50 rounded-xl border border-gray-200">
@@ -544,38 +676,41 @@ export function PermissionsManagement() {
                                                     <h4 className="text-sm font-bold text-gray-900 capitalize">{module}</h4>
                                                     <button
                                                         onClick={() => toggleModuleWildcard(module)}
-                                                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${hasWildcard
+                                                        className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${isModuleFullySelected
                                                             ? 'bg-indigo-600 text-white'
                                                             : 'bg-white text-gray-700 border border-gray-300 hover:border-indigo-400'
                                                             }`}
                                                     >
-                                                        {hasWildcard ? '✓ All Actions' : 'Select All'}
+                                                        {isModuleFullySelected ? '✓ All Actions' : 'Select All'}
                                                     </button>
                                                 </div>
 
                                                 {/* Direct Module Permissions (if any) */}
                                                 {directPermissions.length > 0 && (
                                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                                                        {directPermissions.map(permission => (
-                                                            <button
-                                                                key={permission}
-                                                                onClick={() => togglePermission(permission)}
-                                                                disabled={hasWildcard}
-                                                                className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all disabled:opacity-50 ${currentPermission.permissions?.includes(permission) || hasWildcard
-                                                                    ? 'bg-indigo-600 text-white border-indigo-600'
-                                                                    : 'bg-white text-gray-800 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
-                                                                    }`}
-                                                            >
-                                                                {permission.split('.').pop()}
-                                                            </button>
-                                                        ))}
+                                                        {directPermissions.map(permission => {
+                                                            const isChecked = isPermissionChecked(permission);
+                                                            return (
+                                                                <button
+                                                                    key={permission}
+                                                                    onClick={() => togglePermission(permission)}
+                                                                    className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${isChecked
+                                                                        ? 'bg-indigo-600 text-white border-indigo-600'
+                                                                        : 'bg-white text-gray-800 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
+                                                                        }`}
+                                                                >
+                                                                    {permission.split('.').pop()}
+                                                                </button>
+                                                            );
+                                                        })}
                                                     </div>
                                                 )}
 
                                                 {/* Submodules */}
                                                 {Object.keys(submoduleGroups).map(submodule => {
                                                     const submoduleWildcard = `${module}.${submodule}.*`;
-                                                    const hasSubmoduleWildcard = currentPermission.permissions?.includes(submoduleWildcard);
+                                                    // Similar logic for submodule "Select All"
+                                                    const isSubmoduleFullySelected = currentPermission.permissions?.includes(submoduleWildcard) || isModuleFullySelected;
 
                                                     return (
                                                         <div key={submodule} className="mt-3 pl-4 border-l-2 border-indigo-200">
@@ -583,29 +718,30 @@ export function PermissionsManagement() {
                                                                 <h5 className="text-xs font-bold text-gray-700 capitalize">{submodule}</h5>
                                                                 <button
                                                                     onClick={() => togglePermission(submoduleWildcard)}
-                                                                    disabled={hasWildcard}
-                                                                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all disabled:opacity-50 ${hasSubmoduleWildcard || hasWildcard
+                                                                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${isSubmoduleFullySelected
                                                                         ? 'bg-indigo-600 text-white'
                                                                         : 'bg-white text-gray-600 border border-gray-300 hover:border-indigo-400'
                                                                         }`}
                                                                 >
-                                                                    {hasSubmoduleWildcard || hasWildcard ? '✓ All' : 'All'}
+                                                                    {isSubmoduleFullySelected ? '✓ All' : 'All'}
                                                                 </button>
                                                             </div>
                                                             <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                                                {submoduleGroups[submodule].map(permission => (
-                                                                    <button
-                                                                        key={permission}
-                                                                        onClick={() => togglePermission(permission)}
-                                                                        disabled={hasWildcard || hasSubmoduleWildcard}
-                                                                        className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all disabled:opacity-50 ${currentPermission.permissions?.includes(permission) || hasWildcard || hasSubmoduleWildcard
-                                                                            ? 'bg-indigo-600 text-white border-indigo-600'
-                                                                            : 'bg-white text-gray-800 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
-                                                                            }`}
-                                                                    >
-                                                                        {permission.split('.').pop()}
-                                                                    </button>
-                                                                ))}
+                                                                {submoduleGroups[submodule].map(permission => {
+                                                                    const isChecked = isPermissionChecked(permission);
+                                                                    return (
+                                                                        <button
+                                                                            key={permission}
+                                                                            onClick={() => togglePermission(permission)}
+                                                                            className={`px-3 py-2 text-xs font-bold rounded-lg border transition-all ${isChecked
+                                                                                ? 'bg-indigo-600 text-white border-indigo-600'
+                                                                                : 'bg-white text-gray-800 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
+                                                                                }`}
+                                                                        >
+                                                                            {permission.split('.').pop()}
+                                                                        </button>
+                                                                    );
+                                                                })}
                                                             </div>
                                                         </div>
                                                     );
