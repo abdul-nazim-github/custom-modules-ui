@@ -27,28 +27,33 @@ export async function GET(request: Request) {
       );
     }
 
+    const sortField = searchParams.get('sortField') || 'name';
+    const sortOrder = searchParams.get('sortOrder') || 'asc';
+
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
 
     try {
       const response = await axios.get(`${backendUrl}/auth/users`, {
-        params: { page, limit },
+        params: { page, limit, sortField, sortOrder },
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
       });
-      // Map _id to id if necessary
+      // Map _id to id if necessary and normalize email
+      const rawData = response.data.data || response.data.users || [];
+      const normalizedUsers = Array.isArray(rawData) ? rawData.map((user: any) => ({
+        ...user,
+        id: user.id || user._id,
+        email: user.email || user.Email || user.EMAIL
+      })) : [];
 
-      if (response.data.success && Array.isArray(response.data.data)) {
-        response.data.data = response.data.data.map((user: BackendUser) => {
-          const mappedUser = {
-            ...user,
-            id: user.id || user._id
-          };
-          return mappedUser;
-        });
-      }
-
-      return NextResponse.json(response.data);
+      return NextResponse.json({
+        ...response.data,
+        success: true,
+        data: normalizedUsers,
+        users: normalizedUsers, // Provide both for compatibility
+        total: response.data.total || response.data.meta?.totalCount || normalizedUsers.length
+      });
     } catch (backendError: unknown) {
       if (axios.isAxiosError(backendError)) {
         console.error('Backend fetch users error status:', backendError.response?.status);
