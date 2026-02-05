@@ -6,6 +6,7 @@ import api from '@/lib/axios';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { PermissionsManagement } from './permissions-management';
+import { RolesManagement } from './roles-management';
 import { ContentManagement } from './content-management';
 import { validatePassword, generatePassword } from '@/lib/validation';
 import { PasswordChecklist } from './password-checklist';
@@ -38,7 +39,15 @@ const PERMISSION_LABELS: Record<Permission, string> = {
     [Permission.CONTACT_FORM]: 'Contact Form',
 };
 
-
+interface UserData {
+    id: string;
+    _id?: string;
+    email: string;
+    name: string;
+    role: Role;
+    permissions: string[];
+    custom_permissions?: string[];
+}
 
 interface DashboardTabsProps {
     userName: string;
@@ -53,13 +62,24 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'settings', label: 'Settings', icon: Settings, permission: Permission.SETTINGS },
         { id: 'security', label: 'Security', icon: Shield, permission: Permission.SECURITY },
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
+        { id: 'users', label: 'Users', icon: Users },
         { id: 'permissions-mgmt', label: 'Permissions Management', icon: Shield },
+        { id: 'roles', label: 'Role Management', icon: Shield },
         { id: 'content', label: 'Content', icon: FileText },
         { id: 'contact', label: 'Contact Request Entries', icon: Mail, permission: Permission.CONTACT_FORM },
     ];
 
     const tabs = allTabs.filter((tab: { id: string; label: string; icon: LucideIcon; permission?: Permission; role?: Role }) => {
+        if (tab.id === 'users') {
+            return role === Role.SUPER_ADMIN ||
+                permissions.includes(Permission.MANAGE_USERS) ||
+                permissions.includes(Permission.MANAGE_PERMISSIONS);
+        }
         if (tab.id === 'permissions-mgmt') {
+            return role === Role.SUPER_ADMIN ||
+                permissions.includes(Permission.MANAGE_PERMISSIONS);
+        }
+        if (tab.id === 'roles') {
             return role === Role.SUPER_ADMIN ||
                 permissions.includes(Permission.MANAGE_PERMISSIONS);
         }
@@ -71,6 +91,24 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     });
     const [activeTab, setActiveTab] = useState(tabs[0]?.id || '');
 
+    // User Management State
+    const [users, setUsers] = useState<UserData[]>([]);
+    const [targetUserId, setTargetUserId] = useState('');
+    const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+    const [selectedRole, setSelectedRole] = useState<Role>(Role.USER);
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [userToDelete, setUserToDelete] = useState<{ id: string, name: string } | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const abortControllerRef = useRef<AbortController | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [limit, setLimit] = useState(10);
+    const [totalUsers, setTotalUsers] = useState(0);
+    const [sortField, setSortField] = useState<string>('name');
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [customPermissionInput, setCustomPermissionInput] = useState('');
+
     // Password Update State
     const [showPasswordForm, setShowPasswordForm] = useState(false);
     const [passwordData, setPasswordData] = useState({
@@ -80,7 +118,206 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     });
     const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
 
+    // Comparison logic for disabling buttons
+    const currentUser = users.find(u => (u.id || u._id) === targetUserId);
+    const getUserPermissions = (user?: UserData) => {
+        if (!user) return [];
+        if (Array.isArray(user.custom_permissions) && user.custom_permissions.length > 0) {
+            return user.custom_permissions;
+        }
+        return user.permissions || [];
+    };
 
+    const customPermissions = selectedPermissions.filter(
+        permission => !Object.values(Permission).includes(permission as Permission)
+    );
+
+    const hasPermissionChanges = currentUser ? (
+        selectedPermissions.length !== getUserPermissions(currentUser).length ||
+        !selectedPermissions.every(p => getUserPermissions(currentUser).includes(p))
+    ) : false;
+    const hasRoleChanges = currentUser ? selectedRole !== currentUser.role : false;
+    const isSelfEdit = currentUser ? currentUser.email === userEmail : false;
+
+    // Permission flags for logged-in user
+    const canManageUsers = role === Role.SUPER_ADMIN || permissions.includes(Permission.MANAGE_USERS);
+    const canManagePermissions = role === Role.SUPER_ADMIN || permissions.includes(Permission.MANAGE_PERMISSIONS);
+    const canDeleteUsers = role === Role.SUPER_ADMIN;
+
+    useEffect(() => {
+        if (activeTab === 'users') {
+            fetchUsers();
+        }
+    }, [activeTab, currentPage, limit, sortField, sortOrder]);
+
+    const fetchUsers = async (page = currentPage, currentLimit = limit, sortBy = sortField, order = sortOrder) => {
+        setIsLoadingUsers(true);
+        try {
+            const response = await api.get(`/api/auth/users?page=${page}&limit=${currentLimit}&sortBy=${sortBy}&order=${order}`);
+            if (response.data.success) {
+                const fetchedUsers = response.data.data;
+                setUsers(fetchedUsers);
+
+                // Extract totalCount from meta as per the new API response format
+                const total = response.data.meta?.totalCount ??
+                    response.data.total ??
+                    response.data.totalUsers ??
+                    response.data.totalCount ??
+                    response.data.count ??
+                    fetchedUsers.length;
+
+                setTotalUsers(total);
+                setCurrentPage(page);
+                setLimit(currentLimit);
+                if (fetchedUsers.length > 0) {
+                    // Update current target user data if already selected
+                    if (targetUserId) {
+                        const currentUser = fetchedUsers.find((u: UserData) => (u.id || u._id) === targetUserId);
+                        if (currentUser) {
+                            setSelectedRole(currentUser.role);
+                            setSelectedPermissions(getUserPermissions(currentUser));
+                        }
+                    } else {
+                        // Initial load: select first user
+                        const firstUser = fetchedUsers[0];
+                        const initialId = firstUser.id || firstUser._id;
+                        setTargetUserId(initialId);
+                        setSelectedRole(firstUser.role);
+                        setSelectedPermissions(getUserPermissions(firstUser));
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Fetch users error:', error);
+            toast.error('Failed to fetch users');
+        } finally {
+            setIsLoadingUsers(false);
+        }
+    };
+
+    const handleUpdatePermissions = async () => {
+        if (!targetUserId || targetUserId === 'undefined') {
+            toast.error('Invalid User ID selected');
+            return;
+        }
+        if (selectedPermissions.length === 0) {
+            toast.error('Please select at least one permission');
+            return;
+        }
+        setIsUpdating(true);
+        const loadingToast = toast.loading('Updating access...');
+        try {
+            await api.put(`/api/users/${targetUserId}/updateAccess`, {
+                role: selectedRole,
+                custom_permissions: selectedPermissions
+            });
+            toast.success('Access updated successfully!', { id: loadingToast });
+
+            // Immediate local state update for "immediate effect"
+            setUsers(prevUsers => prevUsers.map(user =>
+                (user.id || user._id) === targetUserId
+                    ? { ...user, custom_permissions: [...selectedPermissions], role: selectedRole }
+                    : user
+            ));
+
+            fetchUsers(); // Still refresh list to keep in sync with server
+        } catch (error) {
+            console.error('Update error:', error);
+            toast.error('Failed to update permissions', { id: loadingToast });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleUpdateRole = async () => {
+        if (!targetUserId || targetUserId === 'undefined') {
+            toast.error('Invalid User ID selected');
+            return;
+        }
+        setIsUpdating(true);
+        const loadingToast = toast.loading('Updating access...');
+        try {
+            await api.put(`/api/users/${targetUserId}/updateAccess`, {
+                role: selectedRole,
+                custom_permissions: selectedPermissions
+            });
+            toast.success('Access updated successfully!', { id: loadingToast });
+
+            // Immediate local state update for "immediate effect"
+            setUsers(prevUsers => prevUsers.map(user =>
+                (user.id || user._id) === targetUserId
+                    ? { ...user, role: selectedRole, custom_permissions: [...selectedPermissions] }
+                    : user
+            ));
+
+            fetchUsers(); // Still refresh list to keep in sync with server
+        } catch (error) {
+            console.error('Role update error:', error);
+            toast.error('Failed to update role', { id: loadingToast });
+        } finally {
+            setIsUpdating(false);
+        }
+    };
+
+    const handleDeleteUser = (userId: string, userName: string) => {
+        setUserToDelete({ id: userId, name: userName });
+        setShowDeleteModal(true);
+    };
+
+    const confirmDeleteUser = async () => {
+        if (!userToDelete) return;
+
+        setIsDeleting(true);
+        const loadingToast = toast.loading('Deleting user...');
+
+        // Create new AbortController
+        abortControllerRef.current = new AbortController();
+
+        try {
+            await api.delete(`/api/auth/users/${userToDelete.id}`, {
+                signal: abortControllerRef.current.signal
+            });
+            toast.success('User deleted successfully!', { id: loadingToast });
+            if (targetUserId === userToDelete.id) {
+                setTargetUserId('');
+            }
+            setShowDeleteModal(false);
+            setUserToDelete(null);
+            fetchUsers(); // Refresh list
+        } catch (error: unknown) {
+            if (axios.isAxiosError(error)) {
+                if (error.name === 'CanceledError' || error.name === 'AbortError') {
+                    toast.dismiss(loadingToast);
+                } else {
+                    console.error('Delete user error:', error);
+                    toast.error('Failed to delete user', { id: loadingToast });
+                }
+            } else {
+                console.error('Delete user error:', error);
+                toast.error('An unexpected error occurred', { id: loadingToast });
+            }
+        } finally {
+            setIsDeleting(false);
+            abortControllerRef.current = null;
+        }
+    };
+
+    const togglePermission = (perm: string) => {
+        setSelectedPermissions(prev =>
+            prev.includes(perm) ? prev.filter(p => p !== perm) : [...prev, perm]
+        );
+    };
+
+    const handleAddCustomPermission = () => {
+        const trimmed = customPermissionInput.trim();
+        if (!trimmed) return;
+        setSelectedPermissions(prev => (prev.includes(trimmed) ? prev : [...prev, trimmed]));
+        setCustomPermissionInput('');
+    };
+
+    const handleRemoveCustomPermission = (permission: string) => {
+        setSelectedPermissions(prev => prev.filter(p => p !== permission));
+    };
 
     const handlePasswordUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -141,7 +378,14 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         }
     };
 
-
+    const handleUserSelect = (userId: string) => {
+        setTargetUserId(userId);
+        const user = users.find(u => (u.id || u._id) === userId);
+        if (user) {
+            setSelectedRole(user.role);
+            setSelectedPermissions(getUserPermissions(user));
+        }
+    };
 
     return (
         <div className="space-y-6">
@@ -293,13 +537,384 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                     </div>
                 )}
 
+                {activeTab === 'users' && (
+                    <div className="p-8 transition-all duration-500 opacity-100 translate-y-0">
+                        <div className="flex justify-between items-center mb-8">
+                            <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
+                            <div className="flex items-center space-x-4">
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-sm text-gray-500 font-medium">Show:</span>
+                                    <select
+                                        value={limit}
+                                        onChange={(e) => {
+                                            const newLimit = Number(e.target.value);
+                                            setLimit(newLimit);
+                                            fetchUsers(1, newLimit);
+                                        }}
+                                        className="px-3 py-1.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 text-sm font-medium"
+                                    >
+                                        <option value={10}>10</option>
+                                        <option value={20}>20</option>
+                                        <option value={50}>50</option>
+                                        <option value={100}>100</option>
+                                    </select>
+                                </div>
+                                <button
+                                    onClick={() => fetchUsers()}
+                                    disabled={isLoadingUsers}
+                                    className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-200"
+                                >
+                                    <Activity size={18} className={isLoadingUsers ? 'animate-spin' : ''} />
+                                    <span>Refresh List</span>
+                                </button>
+                            </div>
+                        </div>
 
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                            {/* Management Section */}
+                            <div className="lg:col-span-1 space-y-6">
+                                <div className="p-6 rounded-2xl bg-gray-50 border border-gray-100">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                                        <Users className="mr-2 text-indigo-600" size={20} />
+                                        Manage User
+                                    </h3>
+                                    <div className="space-y-6">
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">Select User</label>
+                                            <select
+                                                value={targetUserId}
+                                                onChange={(e) => handleUserSelect(e.target.value)}
+                                                className="w-full px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium"
+                                            >
+                                                {users.length === 0 && <option value="">No users found</option>}
+                                                {users.map(user => (
+                                                    <option key={user.id || user._id} value={user.id || user._id || ''}>
+                                                        {user.email} ({user.name})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* Role Update */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">Update Role</label>
+                                            <div className="flex space-x-2">
+                                                <select
+                                                    value={selectedRole}
+                                                    onChange={(e) => setSelectedRole(e.target.value as Role)}
+                                                    disabled={!canManageUsers || isSelfEdit}
+                                                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                                >
+                                                    <option value={Role.USER}>User</option>
+                                                    <option value={Role.ADMIN}>Admin</option>
+                                                    <option value={Role.SUPER_ADMIN}>Super Admin</option>
+                                                </select>
+                                                <button
+                                                    onClick={handleUpdateRole}
+                                                    disabled={isUpdating || !targetUserId || !hasRoleChanges || isSelfEdit || !canManageUsers}
+                                                    className="p-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-indigo-100"
+                                                    title={!canManageUsers ? "You don't have permission to manage roles" : (isSelfEdit ? "You cannot update your own role" : (hasRoleChanges ? "Update Role" : "No changes to role"))}
+                                                >
+                                                    <UserCheck size={20} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Permissions Update */}
+                                        <div>
+                                            <label className="block text-sm font-bold text-gray-800 mb-2">Manage Permissions</label>
+                                            <div className="grid grid-cols-1 gap-2 mb-4">
+                                                {Object.values(Permission).map((perm) => (
+                                                    <button
+                                                        key={perm}
+                                                        onClick={() => togglePermission(perm)}
+                                                        disabled={!canManagePermissions || isSelfEdit}
+                                                        className={`px-4 py-2 text-left text-xs font-bold rounded-lg border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${selectedPermissions.includes(perm)
+                                                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                                            : 'bg-white text-gray-800 border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
+                                                            }`}
+                                                    >
+                                                        {PERMISSION_LABELS[perm]}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                            <div className="flex flex-col gap-2 mb-4">
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={customPermissionInput}
+                                                        onChange={(e) => setCustomPermissionInput(e.target.value)}
+                                                        placeholder="Add custom permission (e.g. closetab.edit)"
+                                                        disabled={!canManagePermissions || isSelfEdit}
+                                                        className="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleAddCustomPermission}
+                                                        disabled={!customPermissionInput.trim() || !canManagePermissions || isSelfEdit}
+                                                        className="px-4 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold"
+                                                    >
+                                                        Add
+                                                    </button>
+                                                </div>
+                                                {customPermissions.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {customPermissions.map(permission => (
+                                                            <button
+                                                                key={permission}
+                                                                type="button"
+                                                                onClick={() => handleRemoveCustomPermission(permission)}
+                                                                disabled={!canManagePermissions || isSelfEdit}
+                                                                className="px-3 py-1.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                            >
+                                                                {permission}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={handleUpdatePermissions}
+                                                disabled={isUpdating || !targetUserId || !hasPermissionChanges || isSelfEdit || !canManagePermissions}
+                                                className="w-full py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all font-bold shadow-lg shadow-indigo-200 flex items-center justify-center space-x-2"
+                                                title={!canManagePermissions ? "You don't have permission to manage permissions" : (isSelfEdit ? "You cannot update your own permissions" : (hasPermissionChanges ? "Update Permissions" : "No changes to permissions"))}
+                                            >
+                                                {isUpdating ? (
+                                                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                ) : (
+                                                    <Shield size={18} />
+                                                )}
+                                                <span>Update Permissions</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* User List Table */}
+                            <div className="lg:col-span-2 overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
+                                <div className="overflow-x-auto min-h-[580px]">
+                                    <table className="min-w-full divide-y divide-gray-200">
+                                        <thead className="bg-gray-100">
+                                            <tr>
+                                                <th
+                                                    className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                                    onClick={() => {
+                                                        const newOrder = sortField === 'name' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                                        setSortField('name');
+                                                        setSortOrder(newOrder);
+                                                    }}
+                                                >
+                                                    <div className="flex items-center space-x-1">
+                                                        <span>User</span>
+                                                        {sortField === 'name' && (
+                                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                                        )}
+                                                    </div>
+                                                </th>
+                                                <th
+                                                    className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                                    onClick={() => {
+                                                        const newOrder = sortField === 'role' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                                        setSortField('role');
+                                                        setSortOrder(newOrder);
+                                                    }}
+                                                >
+                                                    <div className="flex items-center space-x-1">
+                                                        <span>Role</span>
+                                                        {sortField === 'role' && (
+                                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                                        )}
+                                                    </div>
+                                                </th>
+                                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Permissions</th>
+                                                <th className="px-6 py-3 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="bg-white divide-y divide-gray-200">
+                                            {isLoadingUsers && (
+                                                <tr>
+                                                    <td colSpan={4} className="px-6 py-12 text-center">
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
+                                                            <p className="text-gray-700 font-bold">Loading users...</p>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {!isLoadingUsers && users.length === 0 && (
+                                                <tr>
+                                                    <td colSpan={4} className="px-6 py-12 text-center">
+                                                        <p className="text-gray-700 font-bold">No users found.</p>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                            {!isLoadingUsers && users.map((user) => (
+                                                <tr key={user.id || user._id} className={targetUserId === (user.id || user._id) ? 'bg-indigo-50/50' : ''}>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="flex items-center">
+                                                            <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+                                                                {user.name.charAt(0)}
+                                                            </div>
+                                                            <div className="ml-4">
+                                                                <div className="text-sm font-bold text-gray-900">{user.name}</div>
+                                                                <div className="text-sm text-gray-700 font-medium">{user.email}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${user.role === Role.SUPER_ADMIN ? 'bg-purple-100 text-purple-900' :
+                                                            user.role === Role.ADMIN ? 'bg-blue-100 text-blue-900' : 'bg-gray-200 text-gray-900'
+                                                            }`}>
+                                                            {user.role}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        {(() => {
+                                                            const userPermissions = getUserPermissions(user);
+                                                            return (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {userPermissions.slice(0, 4).map(p => (
+                                                                        <span key={p} className="px-2 py-0.5 bg-gray-200 text-gray-800 text-[10px] rounded-md font-bold">
+                                                                            {PERMISSION_LABELS[p as Permission] || p.split('~').pop()}
+                                                                        </span>
+                                                                    ))}
+                                                                    {userPermissions.length > 4 && (
+                                                                        <div className="relative group">
+                                                                            <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] rounded-md font-bold cursor-help">
+                                                                                +{userPermissions.length - 4} more
+                                                                            </span>
+                                                                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-[10px] rounded-lg shadow-xl z-50">
+                                                                                <div className="flex flex-wrap gap-1">
+                                                                                    {userPermissions.slice(4).map(p => (
+                                                                                        <span key={p} className="px-1.5 py-0.5 bg-gray-700 rounded">
+                                                                                            {PERMISSION_LABELS[p as Permission] || p.split('~').pop()}
+                                                                                        </span>
+                                                                                    ))}
+                                                                                </div>
+                                                                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-8 border-transparent border-t-gray-900"></div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })()}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        <div className="flex justify-end space-x-2">
+                                                            <button
+                                                                onClick={() => handleUserSelect(user.id || user._id || '')}
+                                                                className="p-2 text-gray-500 hover:text-indigo-600 transition-colors"
+                                                                title="Edit User"
+                                                            >
+                                                                <Edit2 size={16} />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteUser(user.id || user._id || '', user.name)}
+                                                                disabled={user.email === userEmail || !canDeleteUsers}
+                                                                className="p-2 text-gray-500 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                                                                title={!canDeleteUsers ? "Only Super Admins can delete users" : (user.email === userEmail ? "You cannot delete your own account" : "Delete User")}
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {/* Pagination Controls */}
+                                {users.length > 0 && (
+                                    <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                                        <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                                            <div>
+                                                <p className="text-sm text-gray-700">
+                                                    Showing <span className="font-bold">{(currentPage - 1) * limit + 1}</span> to <span className="font-bold">{Math.min(currentPage * limit, totalUsers)}</span> of{' '}
+                                                    <span className="font-bold">{totalUsers}</span> results
+                                                </p>
+                                            </div>
+                                            <div>
+                                                <nav className="relative z-0 inline-flex rounded-xl shadow-sm -space-x-px bg-white border border-gray-200 p-1" aria-label="Pagination">
+                                                    <button
+                                                        onClick={() => fetchUsers(currentPage - 1)}
+                                                        disabled={currentPage === 1 || isLoadingUsers}
+                                                        className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                    >
+                                                        <ChevronLeft className="h-4 w-4" />
+                                                    </button>
+
+                                                    {(() => {
+                                                        const totalPages = Math.max(1, Math.ceil(totalUsers / limit));
+                                                        const delta = 1;
+                                                        const range = [];
+                                                        for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+                                                            range.push(i);
+                                                        }
+
+                                                        if (currentPage - delta > 2) range.unshift('...');
+                                                        range.unshift(1);
+                                                        if (currentPage + delta < totalPages - 1) range.push('...');
+                                                        if (totalPages > 1) range.push(totalPages);
+
+                                                        return range.map((page, i) => (
+                                                            <button
+                                                                key={i}
+                                                                onClick={() => typeof page === 'number' ? fetchUsers(page) : null}
+                                                                disabled={currentPage === page || typeof page !== 'number' || isLoadingUsers}
+                                                                className={`relative inline-flex items-center px-4 py-2 rounded-lg text-sm font-bold transition-all ${currentPage === page
+                                                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200'
+                                                                    : page === '...'
+                                                                        ? 'text-gray-400 cursor-default'
+                                                                        : 'text-gray-500 hover:bg-gray-50 hover:text-indigo-600'
+                                                                    }`}
+                                                            >
+                                                                {page}
+                                                            </button>
+                                                        ));
+                                                    })()}
+
+                                                    <button
+                                                        onClick={() => fetchUsers(currentPage + 1)}
+                                                        disabled={currentPage * limit >= totalUsers || isLoadingUsers}
+                                                        className="relative inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-500 hover:bg-gray-50 hover:text-indigo-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                                    >
+                                                        <ChevronRight className="h-4 w-4" />
+                                                    </button>
+                                                </nav>
+                                            </div>
+                                        </div>
+                                        {/* Mobile view navigation */}
+                                        <div className="flex-1 flex justify-between sm:hidden">
+                                            <button
+                                                onClick={() => fetchUsers(currentPage - 1)}
+                                                disabled={currentPage === 1 || isLoadingUsers}
+                                                className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Previous
+                                            </button>
+                                            <button
+                                                onClick={() => fetchUsers(currentPage + 1)}
+                                                disabled={currentPage * limit >= totalUsers || isLoadingUsers}
+                                                className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {activeTab === 'permissions-mgmt' && (
                     <PermissionsManagement />
                 )}
 
-
+                {activeTab === 'roles' && (
+                    <RolesManagement />
+                )}
 
                 {activeTab === 'content' && (
                     <ContentManagement />
@@ -310,7 +925,45 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                 )}
             </div>
 
-
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6">
+                            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center text-red-600 mb-4">
+                                <Trash2 size={24} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">Delete User</h3>
+                            <p className="text-gray-500">
+                                Are you sure you want to delete <span className="font-bold text-gray-900">{userToDelete?.name}</span>?
+                                This action cannot be undone and will permanently remove their account.
+                            </p>
+                        </div>
+                        <div className="bg-gray-50 px-6 py-4 flex justify-end space-x-3">
+                            <button
+                                onClick={() => {
+                                    if (isDeleting && abortControllerRef.current) {
+                                        abortControllerRef.current.abort();
+                                    }
+                                    setShowDeleteModal(false);
+                                    setUserToDelete(null);
+                                }}
+                                className="px-4 py-2 text-sm font-bold text-gray-700 hover:bg-gray-200 rounded-xl transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDeleteUser}
+                                disabled={isDeleting}
+                                className="px-4 py-2 text-sm font-bold text-white bg-red-600 hover:bg-red-700 rounded-xl transition-colors shadow-lg shadow-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                            >
+                                {isDeleting && <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                                <span>{isDeleting ? 'Deleting...' : 'Delete User'}</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Password Update Modal */}
             {showPasswordForm && (
