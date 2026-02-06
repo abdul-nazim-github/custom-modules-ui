@@ -66,8 +66,8 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'security', label: 'Security', icon: Shield, permission: Permission.SECURITY },
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
         { id: 'users', label: 'Users', icon: Users },
-        { id: 'cms', label: 'CMS', icon: FileText, permission: Permission.CMS },
         { id: 'permissions-mgmt', label: 'Permissions Management', icon: Shield },
+        { id: 'cms', label: 'CMS', icon: FileText, permission: Permission.CMS },
         { id: 'contact', label: 'Contact Request Entries', icon: Mail, permission: Permission.CONTACT_FORM },
     ];
 
