@@ -44,6 +44,8 @@ interface UserData {
     id: string;
     _id?: string;
     email: string;
+    Email?: string;
+    EMAIL?: string;
     name: string;
     role: Role;
     permissions: string[];
@@ -160,7 +162,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             } else {
                 toast.error(response.data.message || 'Failed to update password', { id: loadingToast });
             }
-        } catch (error: unknown) {
+        } catch (error) {
             console.error('Password update error:', error);
             let message = 'Failed to update password';
             if (axios.isAxiosError(error)) {
@@ -197,7 +199,13 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             }
         } catch (error) {
             console.error('Fetch users error:', error);
-            toast.error('Failed to load users');
+            let message = 'Failed to fetch users';
+            if (axios.isAxiosError(error)) {
+                message = error.response?.data?.message || message;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+            toast.error(message);
         } finally {
             setIsLoadingUsers(false);
         }
@@ -237,7 +245,13 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             fetchUsers();
         } catch (error) {
             console.error('Update user error:', error);
-            toast.error('Failed to update user', { id: loadingToast });
+            let message = 'Failed to update user';
+            if (axios.isAxiosError(error)) {
+                message = error.response?.data?.message || message;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+            toast.error(message, { id: loadingToast });
         } finally {
             setIsUpdatingUser(false);
         }
@@ -251,7 +265,13 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             fetchUsers();
         } catch (error) {
             console.error('Role update error:', error);
-            toast.error('Failed to update role', { id: loadingToast });
+            let message = 'Failed to update role';
+            if (axios.isAxiosError(error)) {
+                message = error.response?.data?.message || message;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+            toast.error(message, { id: loadingToast });
         }
     };
 
@@ -263,7 +283,13 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             fetchUsers();
         } catch (error) {
             console.error('Permissions update error:', error);
-            toast.error('Failed to update permissions', { id: loadingToast });
+            let message = 'Failed to update permissions';
+            if (axios.isAxiosError(error)) {
+                message = error.response?.data?.message || message;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+            toast.error(message, { id: loadingToast });
         }
     };
 
@@ -296,10 +322,11 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                 setUserToDelete(null);
                 fetchUsers(users.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage);
             }
-        } catch (error: any) {
-            if (error.name === 'CanceledError') return;
+        } catch (error) {
+            if (axios.isAxiosError(error) && error.name === 'CanceledError') return;
             console.error('Delete error:', error);
-            toast.error(error.response?.data?.message || 'Failed to delete user');
+            const message = axios.isAxiosError(error) ? error.response?.data?.message : 'Failed to delete user';
+            toast.error(message || 'Failed to delete user');
         } finally {
             setIsDeleting(false);
             abortControllerRef.current = null;
@@ -553,8 +580,8 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <div className="font-bold text-gray-900">{user.name}</div>
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                                                            {user.email || (user as any).Email || (user as any).EMAIL}
+                                                        <td className="px-6 py-4 whitespace-nowrap text-gray-600 font-medium">
+                                                            {user.email || user.Email || user.EMAIL}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${user.role === Role.SUPER_ADMIN

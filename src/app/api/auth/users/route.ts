@@ -6,10 +6,17 @@ import { getErrorMessage } from '@/lib/error-utils';
 interface BackendUser {
   id?: string;
   _id?: string;
-  email: string;
-  name: string;
-  role: string;
-  permissions: string[];
+  email?: string;
+  Email?: string;
+  EMAIL?: string;
+  name?: string;
+  Name?: string;
+  full_name?: string;
+  fullName?: string;
+  role?: string;
+  Role?: string;
+  ROLE?: string;
+  [key: string]: unknown;
 }
 
 export async function GET(request: Request) {
@@ -41,12 +48,12 @@ export async function GET(request: Request) {
       });
 
       const rawData = response.data.data || response.data.users || [];
-      const normalizedUsers = Array.isArray(rawData) ? rawData.map((user: any) => ({
+      const normalizedUsers = Array.isArray(rawData) ? rawData.map((user: BackendUser) => ({
         ...user,
-        id: user.id || user._id,
-        email: user.email || user.Email || user.EMAIL,
-        name: user.name || user.Name || user.full_name || user.fullName || 'Unknown User',
-        role: user.role || user.Role || user.ROLE || 'user'
+        id: (user.id || user._id) as string,
+        email: (user.email || user.Email || user.EMAIL) as string,
+        name: (user.name || user.Name || user.full_name || user.fullName || 'Unknown User') as string,
+        role: (user.role || user.Role || user.ROLE || 'user') as string
       })) : [];
 
       return NextResponse.json({
