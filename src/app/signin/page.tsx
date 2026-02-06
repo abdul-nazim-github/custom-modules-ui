@@ -15,8 +15,6 @@ import { getErrorMessage } from '@/lib/error-utils';
 
 import toast from 'react-hot-toast';
 
-import { ContactModal } from '@/components/contact-modal';
-
 export default function SignInPage() {
     const router = useRouter();
     const [formData, setFormData] = useState({
@@ -25,7 +23,6 @@ export default function SignInPage() {
     });
     const [errors, setErrors] = useState<{ email?: string; password?: string; form?: string }>({});
     const [isLoading, setIsLoading] = useState(false);
-    const [showContactModal, setShowContactModal] = useState(false);
 
     const validate = () => {
         const trimmedEmail = formData.email.trim();
@@ -201,22 +198,10 @@ export default function SignInPage() {
                                     <span className="px-2 text-gray-500 font-medium">Need help?</span>
                                 </div>
                             </div>
-
-                            <button
-                                onClick={() => setShowContactModal(true)}
-                                className="text-sm font-bold text-purple-600 hover:text-purple-700 transition-colors flex items-center justify-center gap-2 mx-auto cursor-pointer"
-                            >
-                                Contact Support
-                            </button>
                         </div>
                     </div>
                 </ErrorBoundary>
             </div>
-
-            <ContactModal
-                isOpen={showContactModal}
-                onClose={() => setShowContactModal(false)}
-            />
         </div>
     );
 }

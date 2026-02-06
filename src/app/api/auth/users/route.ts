@@ -10,6 +10,7 @@ interface BackendUser {
   name: string;
   role: string;
   permissions: string[];
+  custom_permissions?: string[];
 }
 
 export async function GET(request: Request) {
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
         response.data.data = response.data.data.map((user: BackendUser) => {
           const mappedUser = {
             ...user,
-            id: user.id || user._id
+            id: user.id || user._id || ''
           };
           return mappedUser;
         });

@@ -5,7 +5,7 @@ import { getErrorMessage } from '@/lib/error-utils';
 
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ [key: string]: string | string[] | undefined }> }
 ) {
   try {
     const { id } = await params;
