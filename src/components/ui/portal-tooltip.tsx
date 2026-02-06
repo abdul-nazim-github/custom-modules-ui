@@ -99,18 +99,21 @@ export function PortalTooltip({ content, children }: PortalTooltipProps) {
         }, 300);
     };
 
-    // Recalculate when hovered or content changes
     useLayoutEffect(() => {
         if (isHovered) {
-            calculatePosition();
+            // Use setTimeout to avoid synchronous setState in effect
+            const timer = setTimeout(calculatePosition, 0);
+
             // Use capture=true to detect scrolling in nested containers
             window.addEventListener('scroll', calculatePosition, true);
             window.addEventListener('resize', calculatePosition);
+
+            return () => {
+                clearTimeout(timer);
+                window.removeEventListener('scroll', calculatePosition, true);
+                window.removeEventListener('resize', calculatePosition);
+            };
         }
-        return () => {
-            window.removeEventListener('scroll', calculatePosition, true);
-            window.removeEventListener('resize', calculatePosition);
-        };
     }, [isHovered, content]);
 
     useEffect(() => {
@@ -152,8 +155,8 @@ export function PortalTooltip({ content, children }: PortalTooltipProps) {
                         {/* Arrow */}
                         <div
                             className={`absolute w-0 h-0 border-4 border-transparent ${tooltipStyles.placement === 'top'
-                                    ? 'border-t-gray-900 top-full -mt-[1px]' // pointing down
-                                    : 'border-b-gray-900 bottom-full -mb-[1px]' // pointing up
+                                ? 'border-t-gray-900 top-full -mt-[1px]' // pointing down
+                                : 'border-b-gray-900 bottom-full -mb-[1px]' // pointing up
                                 }`}
                             style={{
                                 left: tooltipStyles.arrowLeft,

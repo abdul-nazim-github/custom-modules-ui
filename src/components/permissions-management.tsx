@@ -373,6 +373,16 @@ export function PermissionsManagement() {
                                                     {(() => {
                                                         // Group permissions by module for display
                                                         const groupedPermissions: Record<string, string[]> = {};
+                                                        const hasGlobalWildcard = permission.permissions.includes('*');
+
+                                                        if (hasGlobalWildcard) {
+                                                            return (
+                                                                <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-xs rounded-md font-bold">
+                                                                    Full Access (*)
+                                                                </span>
+                                                            );
+                                                        }
+
                                                         permission.permissions.forEach(p => {
                                                             const parts = p.split('.');
                                                             const module = parts[0];
@@ -761,7 +771,8 @@ export function PermissionsManagement() {
                                                                         const moduleWildcard = `${row.path.split('.')[0]}.*`;
                                                                         const submoduleWildcard = row.isSubmodule ? `${row.path}.*` : null;
 
-                                                                        const isAllowed = userPermissions.includes(permissionPath) ||
+                                                                        const isAllowed = userPermissions.includes('*') ||
+                                                                            userPermissions.includes(permissionPath) ||
                                                                             userPermissions.includes(moduleWildcard) ||
                                                                             (submoduleWildcard && userPermissions.includes(submoduleWildcard));
 

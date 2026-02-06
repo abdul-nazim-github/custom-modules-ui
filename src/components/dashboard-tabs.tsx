@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { User, Settings, Activity, Mail, Shield, Bell, Users, Trash2, Edit2, UserCheck, ChevronLeft, ChevronRight, LucideIcon, FileText, XCircle, Wand2, Eye } from 'lucide-react';
+import { User, Settings, Activity, Mail, Shield, Bell, Users, Trash2, Edit2, UserCheck, ChevronLeft, ChevronRight, LucideIcon, FileText, XCircle, Wand2, Eye, Layout } from 'lucide-react';
 import api from '@/lib/axios';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { PermissionsManagement } from './permissions-management';
+import { ContentManagement } from './content-management';
+import { ContactList } from './contact-list';
 import { validatePassword, generatePassword } from '@/lib/validation';
 import { PasswordChecklist } from './password-checklist';
 import { Input } from './ui/input';
@@ -25,6 +27,7 @@ export enum Permission {
     MANAGE_USERS = 'users.*',
     PERMISSIONS = 'permissions.view',
     MANAGE_PERMISSIONS = 'permissions.*',
+    CMS = 'content.view',
     CONTACT_FORM = 'contact.view'
 }
 
@@ -37,6 +40,7 @@ const PERMISSION_LABELS: Record<Permission, string> = {
     [Permission.MANAGE_USERS]: 'Manage Users',
     [Permission.PERMISSIONS]: 'Permissions View',
     [Permission.MANAGE_PERMISSIONS]: 'Manage Permissions',
+    [Permission.CMS]: 'CMS',
     [Permission.CONTACT_FORM]: 'Contact Form',
 };
 
@@ -57,7 +61,7 @@ interface DashboardTabsProps {
     role: string[];
 }
 
-export function DashboardTabs({ userName, userEmail, permissions, role }: DashboardTabsProps) {
+export function DashboardTabs({ userName = 'User', userEmail = '', permissions = [], role = [] }: DashboardTabsProps) {
     const allTabs = [
         { id: 'profile', label: 'Profile', icon: User, permission: Permission.PROFILE },
         { id: 'settings', label: 'Settings', icon: Settings, permission: Permission.SETTINGS },
@@ -65,12 +69,25 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
         { id: 'users', label: 'Users', icon: Users, permission: Permission.USERS },
         { id: 'permissions-mgmt', label: 'Permissions Management', icon: Shield, permission: Permission.PERMISSIONS },
+        { id: 'cm', label: 'CMS', icon: Layout, permission: Permission.CMS },
+        { id: 'contacts', label: 'Contact Request Entries', icon: Mail, permission: Permission.CONTACT_FORM },
     ];
 
-    const tabs = allTabs.filter((tab) => {
-        const hasRole = (r: string) => role.includes(r);
-        const hasPermission = (p: string) => permissions.includes(p) || permissions.includes(p.split('.')[0] + '.*');
+    const hasRole = (r: string) => role.includes(r);
+    const hasPermission = (p: string) => {
+        if (permissions.includes('*')) return true;
+        if (permissions.includes(p)) return true;
 
+        const parts = p.split('.');
+        let currentPath = '';
+        for (let i = 0; i < parts.length - 1; i++) {
+            currentPath += (currentPath ? '.' : '') + parts[i];
+            if (permissions.includes(currentPath + '.*')) return true;
+        }
+        return false;
+    };
+
+    const tabs = allTabs.filter((tab) => {
         if (tab.id === 'permissions-mgmt') {
             return hasRole(Role.SUPER_ADMIN) || hasPermission(Permission.PERMISSIONS) || hasPermission(Permission.MANAGE_PERMISSIONS);
         }
@@ -713,6 +730,14 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
 
                 {activeTab === 'permissions-mgmt' && (
                     <PermissionsManagement />
+                )}
+
+                {activeTab === 'cm' && (
+                    <ContentManagement />
+                )}
+
+                {activeTab === 'contacts' && (
+                    <ContactList />
                 )}
             </div>
 

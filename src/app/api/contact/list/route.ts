@@ -8,6 +8,9 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = searchParams.get('page') || '1';
     const limit = searchParams.get('limit') || '10';
+    const search = searchParams.get('search') || '';
+    const sortBy = searchParams.get('sortBy') || 'created_at';
+    const order = searchParams.get('order') || 'desc';
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('accessToken')?.value;
 
@@ -22,7 +25,7 @@ export async function GET(request: Request) {
 
     try {
       const response = await axios.get(`${backendUrl}/contact/list`, {
-        params: { page, limit },
+        params: { page, limit, search, sortBy, order },
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }

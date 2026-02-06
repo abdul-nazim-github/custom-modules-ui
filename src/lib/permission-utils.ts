@@ -124,15 +124,15 @@ export function getPermissionLabel(permission: string): string {
   if (permission.endsWith('.*')) {
     const base = permission.slice(0, -2);
     const parts = base.split('.');
-    const module = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
-    return `All ${module} Actions`;
+    const moduleName = parts.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+    return `All ${moduleName} Actions`;
   }
 
   const parts = permission.split('.');
   const action = parts[parts.length - 1];
-  const module = parts.slice(0, -1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+  const moduleLabel = parts.slice(0, -1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
 
-  return `${module} - ${action.charAt(0).toUpperCase() + action.slice(1)}`;
+  return `${moduleLabel} - ${action.charAt(0).toUpperCase() + action.slice(1)}`;
 }
 
 /**
@@ -146,13 +146,13 @@ export function groupPermissionsByModule(permissions: string[]): Record<string, 
 
   for (const permission of permissions) {
     const parts = permission.split('.');
-    const module = parts[0];
+    const modulePrefix = parts[0];
 
-    if (!grouped[module]) {
-      grouped[module] = [];
+    if (!grouped[modulePrefix]) {
+      grouped[modulePrefix] = [];
     }
 
-    grouped[module].push(permission);
+    grouped[modulePrefix].push(permission);
   }
 
   return grouped;

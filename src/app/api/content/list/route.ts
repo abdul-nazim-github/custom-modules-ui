@@ -9,6 +9,8 @@ export async function GET(request: Request) {
     const search = searchParams.get('search') || '';
     const page = searchParams.get('page') || '1';
     const limit = searchParams.get('limit') || '10';
+    const sortBy = searchParams.get('sortBy') || 'updated_at';
+    const order = searchParams.get('order') || 'desc';
 
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('accessToken')?.value;
@@ -24,7 +26,7 @@ export async function GET(request: Request) {
 
     try {
       const response = await axios.get(`${backendUrl}/content/list`, {
-        params: { page, limit, search },
+        params: { page, limit, search, sortBy, order },
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }

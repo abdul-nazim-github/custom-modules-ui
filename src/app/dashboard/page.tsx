@@ -12,10 +12,21 @@ export default async function DashboardPage() {
     const cookieStore = await cookies();
     const userName = cookieStore.get('userName')?.value || 'User';
     const userEmail = cookieStore.get('userEmail')?.value || 'user@example.com';
+    const parseSafe = (value: string | undefined, fallback: any) => {
+        if (!value) return fallback;
+        try {
+            const parsed = JSON.parse(value);
+            return Array.isArray(parsed) ? parsed : [parsed];
+        } catch {
+            return [value];
+        }
+    };
+
     const permissionsRaw = cookieStore.get('userPermissions')?.value;
-    const permissions = permissionsRaw ? JSON.parse(permissionsRaw) : [];
+    const permissions = parseSafe(permissionsRaw, []);
+
     const roleRaw = cookieStore.get('userRole')?.value;
-    const role = roleRaw ? JSON.parse(roleRaw) : ['user'];
+    const role = parseSafe(roleRaw, ['user']);
 
     return (
         <div className="min-h-screen bg-gray-50">
