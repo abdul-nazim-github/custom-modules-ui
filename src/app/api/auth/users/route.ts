@@ -6,10 +6,17 @@ import { getErrorMessage } from '@/lib/error-utils';
 interface BackendUser {
   id?: string;
   _id?: string;
-  email: string;
-  name: string;
-  role: string;
-  permissions: string[];
+  email?: string;
+  Email?: string;
+  EMAIL?: string;
+  name?: string;
+  Name?: string;
+  full_name?: string;
+  fullName?: string;
+  role?: string;
+  Role?: string;
+  ROLE?: string;
+  [key: string]: unknown;
 }
 
 export async function GET(request: Request) {
@@ -27,31 +34,33 @@ export async function GET(request: Request) {
       );
     }
 
-    const sortField = searchParams.get('sortField') || 'name';
-    const sortOrder = searchParams.get('sortOrder') || 'asc';
+    const sortBy = searchParams.get('sortBy') || 'name';
+    const order = searchParams.get('order') || 'asc';
 
     const backendUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3011/api';
 
     try {
       const response = await axios.get(`${backendUrl}/auth/users`, {
-        params: { page, limit, sortField, sortOrder },
+        params: { page, limit, sortBy, order },
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }
       });
-      // Map _id to id if necessary and normalize email
+
       const rawData = response.data.data || response.data.users || [];
-      const normalizedUsers = Array.isArray(rawData) ? rawData.map((user: any) => ({
+      const normalizedUsers = Array.isArray(rawData) ? rawData.map((user: BackendUser) => ({
         ...user,
-        id: user.id || user._id,
-        email: user.email || user.Email || user.EMAIL
+        id: (user.id || user._id) as string,
+        email: (user.email || user.Email || user.EMAIL) as string,
+        name: (user.name || user.Name || user.full_name || user.fullName || 'Unknown User') as string,
+        role: (user.role || user.Role || user.ROLE || 'user') as string
       })) : [];
 
       return NextResponse.json({
         ...response.data,
         success: true,
         data: normalizedUsers,
-        users: normalizedUsers, // Provide both for compatibility
+        users: normalizedUsers,
         total: response.data.total || response.data.meta?.totalCount || normalizedUsers.length
       });
     } catch (backendError: unknown) {

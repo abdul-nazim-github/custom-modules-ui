@@ -44,6 +44,8 @@ interface UserData {
     id: string;
     _id?: string;
     email: string;
+    Email?: string;
+    EMAIL?: string;
     name: string;
     role: Role;
     permissions: string[];
@@ -98,8 +100,8 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
     const [currentPage, setCurrentPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [totalUsers, setTotalUsers] = useState(0);
-    const [sortField, setSortField] = useState<string>('name');
-    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+    const [sortBy, setSortBy] = useState<string>('name');
+    const [order, setOrder] = useState<'asc' | 'desc'>('asc');
 
     // Edit User State
     const [showEditUserModal, setShowEditUserModal] = useState(false);
@@ -160,7 +162,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             } else {
                 toast.error(response.data.message || 'Failed to update password', { id: loadingToast });
             }
-        } catch (error: unknown) {
+        } catch (error) {
             console.error('Password update error:', error);
             let message = 'Failed to update password';
             if (axios.isAxiosError(error)) {
@@ -185,8 +187,8 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                 params: {
                     page,
                     limit: currentLimit,
-                    sortField,
-                    sortOrder
+                    sortBy,
+                    order
                 }
             });
             if (response.data.success) {
@@ -197,17 +199,23 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             }
         } catch (error) {
             console.error('Fetch users error:', error);
-            toast.error('Failed to load users');
+            let message = 'Failed to fetch users';
+            if (axios.isAxiosError(error)) {
+                message = error.response?.data?.message || message;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+            toast.error(message);
         } finally {
             setIsLoadingUsers(false);
         }
     };
 
     useEffect(() => {
-        if (activeTab === 'users' && users.length === 0) {
+        if (activeTab === 'users') {
             fetchUsers();
         }
-    }, [activeTab]);
+    }, [activeTab, currentPage, limit, sortBy, order]);
 
     const handleEditClick = (user: UserData) => {
         setEditingUser({ id: user.id || user._id || '', name: user.name, email: user.email });
@@ -237,7 +245,13 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             fetchUsers();
         } catch (error) {
             console.error('Update user error:', error);
-            toast.error('Failed to update user', { id: loadingToast });
+            let message = 'Failed to update user';
+            if (axios.isAxiosError(error)) {
+                message = error.response?.data?.message || message;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+            toast.error(message, { id: loadingToast });
         } finally {
             setIsUpdatingUser(false);
         }
@@ -251,7 +265,13 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             fetchUsers();
         } catch (error) {
             console.error('Role update error:', error);
-            toast.error('Failed to update role', { id: loadingToast });
+            let message = 'Failed to update role';
+            if (axios.isAxiosError(error)) {
+                message = error.response?.data?.message || message;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+            toast.error(message, { id: loadingToast });
         }
     };
 
@@ -263,7 +283,13 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
             fetchUsers();
         } catch (error) {
             console.error('Permissions update error:', error);
-            toast.error('Failed to update permissions', { id: loadingToast });
+            let message = 'Failed to update permissions';
+            if (axios.isAxiosError(error)) {
+                message = error.response?.data?.message || message;
+            } else if (error instanceof Error) {
+                message = error.message;
+            }
+            toast.error(message, { id: loadingToast });
         }
     };
 
@@ -296,10 +322,11 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                 setUserToDelete(null);
                 fetchUsers(users.length === 1 && currentPage > 1 ? currentPage - 1 : currentPage);
             }
-        } catch (error: any) {
-            if (error.name === 'CanceledError') return;
+        } catch (error) {
+            if (axios.isAxiosError(error) && error.name === 'CanceledError') return;
             console.error('Delete error:', error);
-            toast.error(error.response?.data?.message || 'Failed to delete user');
+            const message = axios.isAxiosError(error) ? error.response?.data?.message : 'Failed to delete user';
+            toast.error(message || 'Failed to delete user');
         } finally {
             setIsDeleting(false);
             abortControllerRef.current = null;
@@ -491,42 +518,43 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
 
                         <div className="space-y-6">
                             {/* User List Table */}
-                            <div className="overflow-hidden rounded-2xl border border-gray-100 shadow-sm">
-                                <div className="overflow-x-auto min-h-[580px]">
+                            <div className="rounded-2xl border border-gray-100 shadow-sm overflow-visible">
+                                <div className="overflow-x-auto overflow-y-visible min-h-[580px]">
                                     <table className="min-w-full divide-y divide-gray-200">
                                         <thead className="bg-gray-100">
                                             <tr>
                                                 <th
                                                     className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
                                                     onClick={() => {
-                                                        const newOrder = sortField === 'name' && sortOrder === 'asc' ? 'desc' : 'asc';
-                                                        setSortField('name');
-                                                        setSortOrder(newOrder);
+                                                        const newOrder = sortBy === 'name' && order === 'asc' ? 'desc' : 'asc';
+                                                        setSortBy('name');
+                                                        setOrder(newOrder);
                                                     }}
                                                 >
                                                     <div className="flex items-center space-x-1">
                                                         <span>Name</span>
-                                                        {sortField === 'name' && (
-                                                            <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                                        {sortBy === 'name' && (
+                                                            <span>{order === 'asc' ? '↑' : '↓'}</span>
                                                         )}
                                                     </div>
                                                 </th>
                                                 <th
                                                     className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
                                                     onClick={() => {
-                                                        const newOrder = sortField === 'email' && sortOrder === 'asc' ? 'desc' : 'asc';
-                                                        setSortField('email');
-                                                        setSortOrder(newOrder);
+                                                        const newOrder = sortBy === 'email' && order === 'asc' ? 'desc' : 'asc';
+                                                        setSortBy('email');
+                                                        setOrder(newOrder);
                                                     }}
                                                 >
                                                     <div className="flex items-center space-x-1">
                                                         <span>Email</span>
-                                                        {sortField === 'email' && (
-                                                            <span>{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                                        {sortBy === 'email' && (
+                                                            <span>{order === 'asc' ? '↑' : '↓'}</span>
                                                         )}
                                                     </div>
                                                 </th>
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Role</th>
+                                                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Permissions</th>
                                                 <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider text-center">Actions</th>
                                             </tr>
                                         </thead>
@@ -548,12 +576,12 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                 </tr>
                                             ) : (
                                                 users.map((user) => (
-                                                    <tr key={user.id || user._id} className="hover:bg-gray-50/50 transition-colors group">
+                                                    <tr key={user.id || user._id} className="hover:bg-gray-50/50 transition-colors group relative hover:z-[100]">
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <div className="font-bold text-gray-900">{user.name}</div>
                                                         </td>
-                                                        <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                                                            {user.email || (user as any).Email || (user as any).EMAIL}
+                                                        <td className="px-6 py-4 whitespace-nowrap text-gray-600 font-medium">
+                                                            {user.email || user.Email || user.EMAIL}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${user.role === Role.SUPER_ADMIN
@@ -564,6 +592,36 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                                 }`}>
                                                                 {user.role}
                                                             </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 relative">
+                                                            <div className="flex flex-wrap gap-1 max-w-xs">
+                                                                {getUserPermissions(user).length > 0 ? (
+                                                                    getUserPermissions(user).slice(0, 3).map((perm, idx) => (
+                                                                        <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                                                                            {PERMISSION_LABELS[perm as Permission] || perm.split('~').pop() || perm}
+                                                                        </span>
+                                                                    ))
+                                                                ) : (
+                                                                    <span className="text-xs text-gray-400 italic">No permissions</span>
+                                                                )}
+                                                                {getUserPermissions(user).length > 3 && (
+                                                                    <div className="relative group/tooltip">
+                                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-600 border border-indigo-100">
+                                                                            +{getUserPermissions(user).length - 3} more
+                                                                        </span>
+                                                                        <div className="absolute bottom-full left-0 mb-2 hidden group-hover/tooltip:block w-48 p-2 bg-gray-900 text-white text-[10px] rounded-lg shadow-xl z-[110]">
+                                                                            <div className="flex flex-wrap gap-1">
+                                                                                {getUserPermissions(user).slice(3).map((perm, idx) => (
+                                                                                    <span key={idx} className="px-1.5 py-0.5 bg-gray-800 rounded whitespace-nowrap">
+                                                                                        {PERMISSION_LABELS[perm as Permission] || perm.split('~').pop() || perm}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                            <div className="absolute top-full left-4 border-8 border-transparent border-t-gray-900"></div>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-center">
                                                             <div className="flex justify-center items-center space-x-2">
