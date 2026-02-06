@@ -3,7 +3,6 @@ import { cookies } from 'next/headers';
 import axios from 'axios';
 import { getErrorMessage } from '@/lib/error-utils';
 
-
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -60,6 +59,7 @@ export async function PUT(
     );
   }
 }
+
 
 export async function DELETE(
   request: Request,
