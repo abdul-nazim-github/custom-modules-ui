@@ -8,8 +8,6 @@ import toast from 'react-hot-toast';
 import { PermissionsManagement } from './permissions-management';
 import { validatePassword, generatePassword } from '@/lib/validation';
 import { PasswordChecklist } from './password-checklist';
-import { ContactList } from './contact-list';
-import { ContentManagement } from './content-management';
 import { Input } from './ui/input';
 
 export enum Role {
@@ -19,14 +17,15 @@ export enum Role {
 }
 
 export enum Permission {
-    PROFILE = 'modules~permission~profile',
-    SETTINGS = 'modules~permission~settings',
-    ACTIVITY = 'modules~permission~activity',
-    SECURITY = 'modules~permission~security',
-    MANAGE_USERS = 'modules~permission~manage_users',
-    MANAGE_PERMISSIONS = 'modules~permission~manage_permissions',
-    CONTACT_FORM = 'modules~permission~contact_form',
-    CMS = 'modules~permission~cms',
+    PROFILE = 'profile.view',
+    SETTINGS = 'settings.view',
+    ACTIVITY = 'activity.view',
+    SECURITY = 'security.view',
+    USERS = 'users.view',
+    MANAGE_USERS = 'users.*',
+    PERMISSIONS = 'permissions.view',
+    MANAGE_PERMISSIONS = 'permissions.*',
+    CONTACT_FORM = 'contact.view'
 }
 
 const PERMISSION_LABELS: Record<Permission, string> = {
@@ -34,20 +33,19 @@ const PERMISSION_LABELS: Record<Permission, string> = {
     [Permission.SETTINGS]: 'Settings',
     [Permission.ACTIVITY]: 'Activity',
     [Permission.SECURITY]: 'Security',
+    [Permission.USERS]: 'Users View',
     [Permission.MANAGE_USERS]: 'Manage Users',
+    [Permission.PERMISSIONS]: 'Permissions View',
     [Permission.MANAGE_PERMISSIONS]: 'Manage Permissions',
     [Permission.CONTACT_FORM]: 'Contact Form',
-    [Permission.CMS]: 'CMS',
 };
 
 interface UserData {
     id: string;
     _id?: string;
     email: string;
-    Email?: string;
-    EMAIL?: string;
     name: string;
-    role: Role;
+    role: string[];
     permissions: string[];
     custom_permissions?: string[];
 }
@@ -56,7 +54,7 @@ interface DashboardTabsProps {
     userName: string;
     userEmail: string;
     permissions: string[];
-    role: string;
+    role: string[];
 }
 
 export function DashboardTabs({ userName, userEmail, permissions, role }: DashboardTabsProps) {
@@ -65,27 +63,21 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
         { id: 'settings', label: 'Settings', icon: Settings, permission: Permission.SETTINGS },
         { id: 'security', label: 'Security', icon: Shield, permission: Permission.SECURITY },
         { id: 'activity', label: 'Activity', icon: Activity, permission: Permission.ACTIVITY },
-        { id: 'users', label: 'Users', icon: Users },
-        { id: 'permissions-mgmt', label: 'Permissions Management', icon: Shield },
-        { id: 'cms', label: 'CMS', icon: FileText, permission: Permission.CMS },
-        { id: 'contact', label: 'Contact Request Entries', icon: Mail, permission: Permission.CONTACT_FORM },
+        { id: 'users', label: 'Users', icon: Users, permission: Permission.USERS },
+        { id: 'permissions-mgmt', label: 'Permissions Management', icon: Shield, permission: Permission.PERMISSIONS },
     ];
 
-    const tabs = allTabs.filter((tab: { id: string; label: string; icon: LucideIcon; permission?: Permission; role?: Role }) => {
+    const tabs = allTabs.filter((tab) => {
+        const hasRole = (r: string) => role.includes(r);
+        const hasPermission = (p: string) => permissions.includes(p) || permissions.includes(p.split('.')[0] + '.*');
+
         if (tab.id === 'permissions-mgmt') {
-            return role === Role.SUPER_ADMIN ||
-                permissions.includes(Permission.MANAGE_PERMISSIONS);
+            return hasRole(Role.SUPER_ADMIN) || hasPermission(Permission.PERMISSIONS) || hasPermission(Permission.MANAGE_PERMISSIONS);
         }
         if (tab.id === 'users') {
-            return role === Role.SUPER_ADMIN ||
-                permissions.includes(Permission.MANAGE_USERS) ||
-                permissions.includes(Permission.MANAGE_PERMISSIONS);
+            return hasRole(Role.SUPER_ADMIN) || hasPermission(Permission.USERS) || hasPermission(Permission.MANAGE_USERS);
         }
-        if (tab.id === 'cms' || tab.id === 'contact') {
-            return role === Role.SUPER_ADMIN || (tab.permission && permissions.includes(tab.permission));
-        }
-        return (tab.permission && permissions.includes(tab.permission)) ||
-            (tab.role && role === tab.role);
+        return (tab.permission && hasPermission(tab.permission)) || !tab.permission;
     });
     const [activeTab, setActiveTab] = useState(tabs[0]?.id || '');
 
@@ -561,7 +553,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                         <tbody className="bg-white divide-y divide-gray-100">
                                             {isLoadingUsers ? (
                                                 <tr>
-                                                    <td colSpan={4} className="px-6 py-12 text-center">
+                                                    <td colSpan={5} className="px-6 py-12 text-center">
                                                         <div className="flex flex-col items-center justify-center space-y-4">
                                                             <div className="h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
                                                             <p className="text-gray-500 font-medium">Loading users data...</p>
@@ -570,7 +562,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                 </tr>
                                             ) : users.length === 0 ? (
                                                 <tr>
-                                                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500 pt-32">
+                                                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500 pt-32">
                                                         No users found.
                                                     </td>
                                                 </tr>
@@ -581,16 +573,16 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                             <div className="font-bold text-gray-900">{user.name}</div>
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap text-gray-600 font-medium">
-                                                            {user.email || user.Email || user.EMAIL}
+                                                            {user.email}
                                                         </td>
                                                         <td className="px-6 py-4 whitespace-nowrap">
-                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${user.role === Role.SUPER_ADMIN
+                                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${user.role.includes(Role.SUPER_ADMIN)
                                                                 ? 'bg-purple-100 text-purple-700'
-                                                                : user.role === Role.ADMIN
+                                                                : user.role.includes(Role.ADMIN)
                                                                     ? 'bg-indigo-100 text-indigo-700'
                                                                     : 'bg-blue-100 text-blue-700'
                                                                 }`}>
-                                                                {user.role}
+                                                                {user.role.join(', ')}
                                                             </span>
                                                         </td>
                                                         <td className="px-6 py-4 relative">
@@ -721,14 +713,6 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
 
                 {activeTab === 'permissions-mgmt' && (
                     <PermissionsManagement />
-                )}
-
-                {activeTab === 'cms' && (
-                    <ContentManagement />
-                )}
-
-                {activeTab === 'contact' && (
-                    <ContactList />
                 )}
             </div>
 

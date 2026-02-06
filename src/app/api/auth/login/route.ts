@@ -100,7 +100,7 @@ export async function POST(request: Request) {
       if (user.role) {
         cookieStore.set({
           name: 'userRole',
-          value: user.role,
+          value: Array.isArray(user.role) ? JSON.stringify(user.role) : JSON.stringify([user.role]),
           httpOnly: false,
           secure: process.env.NODE_ENV === 'production',
           sameSite: 'lax',

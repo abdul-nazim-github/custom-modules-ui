@@ -6,17 +6,11 @@ import { getErrorMessage } from '@/lib/error-utils';
 interface BackendUser {
   id?: string;
   _id?: string;
-  email?: string;
-  Email?: string;
-  EMAIL?: string;
-  name?: string;
-  Name?: string;
-  full_name?: string;
-  fullName?: string;
-  role?: string;
-  Role?: string;
-  ROLE?: string;
-  [key: string]: unknown;
+  email: string;
+  name: string;
+  role: string[];
+  permissions: string[];
+  custom_permissions?: string[];
 }
 
 export async function GET(request: Request) {
@@ -51,9 +45,9 @@ export async function GET(request: Request) {
       const normalizedUsers = Array.isArray(rawData) ? rawData.map((user: BackendUser) => ({
         ...user,
         id: (user.id || user._id) as string,
-        email: (user.email || user.Email || user.EMAIL) as string,
-        name: (user.name || user.Name || user.full_name || user.fullName || 'Unknown User') as string,
-        role: (user.role || user.Role || user.ROLE || 'user') as string
+        email: user.email,
+        name: user.name,
+        role: user.role
       })) : [];
 
       return NextResponse.json({

@@ -14,7 +14,8 @@ export default async function DashboardPage() {
     const userEmail = cookieStore.get('userEmail')?.value || 'user@example.com';
     const permissionsRaw = cookieStore.get('userPermissions')?.value;
     const permissions = permissionsRaw ? JSON.parse(permissionsRaw) : [];
-    const role = cookieStore.get('userRole')?.value || 'user';
+    const roleRaw = cookieStore.get('userRole')?.value;
+    const role = roleRaw ? JSON.parse(roleRaw) : ['user'];
 
     return (
         <div className="min-h-screen bg-gray-50">

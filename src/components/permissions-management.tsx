@@ -12,11 +12,9 @@ interface PermissionData {
     userId?: string;
     user_id?: string;
     user?: {
-        id?: string;
-        _id?: string;
-        name?: string;
-        email?: string;
-        Email?: string;
+        id: string;
+        name: string;
+        email: string;
     } | null;
     permissions: string[];
     created_at: string;
@@ -31,9 +29,9 @@ interface PermissionMatrix {
 
 interface UserData {
     id: string;
-    _id?: string;
     email: string;
     name: string;
+    role: string[];
 }
 
 export function PermissionsManagement() {
@@ -132,13 +130,13 @@ export function PermissionsManagement() {
     const getUserName = (permission: PermissionData) => {
         if (permission.user) {
             const userName = permission.user.name || 'Unknown User';
-            const userEmail = permission.user.email || permission.user.Email || 'No Email';
+            const userEmail = permission.user.email || 'No Email';
             return `${userName} (${userEmail})`;
         }
 
         const effectiveUserId = permission.userId || permission.user_id;
         if (effectiveUserId) {
-            const user = users.find(u => (u.id || u._id) === effectiveUserId);
+            const user = users.find(u => u.id === effectiveUserId);
             return user ? `${user.name} (${user.email})` : `User ID: ${effectiveUserId}`;
         }
 
@@ -158,7 +156,7 @@ export function PermissionsManagement() {
     const handleOpenEditModal = (permission: PermissionData) => {
         setIsEditing(true);
         // Ensure userId is present for the select in the modal
-        const userId = permission.userId || permission.user?.id || permission.user?._id || '';
+        const userId = permission.userId || permission.user?.id || '';
         setCurrentPermission({ ...permission, userId });
         if (users.length === 0) fetchUsers();
         setShowModal(true);
@@ -526,7 +524,7 @@ export function PermissionsManagement() {
                                 >
                                     <option value="">Select a user...</option>
                                     {users.map(user => (
-                                        <option key={user.id || user._id} value={user.id || user._id}>
+                                        <option key={user.id} value={user.id}>
                                             {user.name} ({user.email})
                                         </option>
                                     ))}
