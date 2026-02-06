@@ -18,6 +18,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const page = searchParams.get('page') || '1';
     const limit = searchParams.get('limit') || '10';
+    const sortBy = searchParams.get('sortBy') || 'name';
+    const order = searchParams.get('order') || 'asc';
     const cookieStore = await cookies();
     const accessToken = cookieStore.get('accessToken')?.value;
     if (!accessToken) {
@@ -32,7 +34,7 @@ export async function GET(request: Request) {
 
     try {
       const response = await axios.get(`${backendUrl}/auth/users`, {
-        params: { page, limit },
+        params: { page, limit, sortBy, order },
         headers: {
           'Authorization': `Bearer ${accessToken}`
         }

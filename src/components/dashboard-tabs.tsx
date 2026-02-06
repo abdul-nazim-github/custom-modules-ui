@@ -638,8 +638,23 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                     }}
                                                 >
                                                     <div className="flex items-center space-x-1">
-                                                        <span>User</span>
+                                                        <span>Name</span>
                                                         {sortField === 'name' && (
+                                                            <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
+                                                        )}
+                                                    </div>
+                                                </th>
+                                                <th
+                                                    className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider cursor-pointer hover:text-indigo-600 transition-colors"
+                                                    onClick={() => {
+                                                        const newOrder = sortField === 'email' && sortOrder === 'asc' ? 'desc' : 'asc';
+                                                        setSortField('email');
+                                                        setSortOrder(newOrder);
+                                                    }}
+                                                >
+                                                    <div className="flex items-center space-x-1">
+                                                        <span>Email</span>
+                                                        {sortField === 'email' && (
                                                             <span className="text-indigo-600 text-xs">{sortOrder === 'asc' ? '↑' : '↓'}</span>
                                                         )}
                                                     </div>
@@ -666,7 +681,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                         <tbody className="bg-white divide-y divide-gray-200">
                                             {isLoadingUsers && (
                                                 <tr>
-                                                    <td colSpan={4} className="px-6 py-12 text-center">
+                                                    <td colSpan={5} className="px-6 py-12 text-center">
                                                         <div className="flex flex-col items-center">
                                                             <div className="h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
                                                             <p className="text-gray-700 font-bold">Loading users...</p>
@@ -676,7 +691,7 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                             )}
                                             {!isLoadingUsers && users.length === 0 && (
                                                 <tr>
-                                                    <td colSpan={4} className="px-6 py-12 text-center">
+                                                    <td colSpan={5} className="px-6 py-12 text-center">
                                                         <p className="text-gray-700 font-bold">No users found.</p>
                                                     </td>
                                                 </tr>
@@ -690,9 +705,11 @@ export function DashboardTabs({ userName, userEmail, permissions, role }: Dashbo
                                                             </div>
                                                             <div className="ml-4">
                                                                 <div className="text-sm font-bold text-gray-900">{user.name}</div>
-                                                                <div className="text-sm text-gray-700 font-medium">{user.email}</div>
                                                             </div>
                                                         </div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="text-sm text-gray-700 font-medium">{user.email}</div>
                                                     </td>
                                                     <td className="px-6 py-4 whitespace-nowrap">
                                                         <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${user.role === Role.SUPER_ADMIN ? 'bg-purple-100 text-purple-900' :
